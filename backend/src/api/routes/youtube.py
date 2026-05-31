@@ -17,6 +17,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from pydantic import BaseModel
 
+from openai import OpenAI
+
 from ...config import get_config
 
 router = APIRouter(prefix="/api/youtube", tags=["youtube"])
@@ -104,6 +106,17 @@ class UploadRequest(BaseModel):
 
 class UploadResponse(BaseModel):
     results: list[str]
+
+
+class GenerateMetadataRequest(BaseModel):
+    clip_text: str
+    source_title: str
+    original_url: str = ""
+
+
+class GenerateMetadataResponse(BaseModel):
+    title: str
+    description: str
 
 
 # ── endpoints ──────────────────────────────────────────────────────
@@ -224,3 +237,48 @@ def upload_video(body: UploadRequest):
             results.append(f"❌ {ch}: {e}")
 
     return UploadResponse(results=results)
+
+
+@router.post("/generate-metadata", response_model=GenerateMetadataResponse)
+def generate_metadata(body: GenerateMetadataRequest):
+    cfg = get_config()
+    base_url = cfg.openai_base_url or "http://localhost:8080/v1"
+    api_key = cfg.openai_api_key or "not-needed"
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    model_for_api = cfg.llm.removeprefix("openai:")
+
+    prompt = (
+        "You are a YouTube Shorts expert. Based on the following clip transcript and source video title, "
+        "generate an engaging YouTube title (max 100 chars) and a description (2-3 sentences) "
+        "that includes the original video link if provided.\n\n"
+        f"Source video title: {body.source_title}\n"
+        f"Clip transcript:\n{body.clip_text}\n"
+    )
+    if body.original_url:
+        prompt += f"Original video URL: {body.original_url}\n"
+
+    prompt += (
+        "\nRespond ONLY with valid JSON in this exact format, no other text:\n"
+        '{"title": "...", "description": "..."}'
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model_for_api or "gemma-3-4b-it",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=300,
+        )
+        raw = response.choices[0].message.content or ""
+        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        data = json.loads(raw)
+        title = (data.get("title") or "").strip()
+        desc = (data.get("description") or "").strip()
+        if body.original_url and body.original_url not in desc:
+            desc += f"\n\nOriginal video: {body.original_url}"
+        return GenerateMetadataResponse(title=title, description=desc)
+    except Exception as e:
+        return GenerateMetadataResponse(
+            title=f"Clip from {body.source_title}",
+            description=f"Clip from: {body.source_title}\n\n{body.original_url}" if body.original_url else f"Clip from {body.source_title}",
+        )
