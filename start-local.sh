@@ -8,6 +8,13 @@ cd "$SCRIPT_DIR"
 echo "=== Starting SupoClip (Local Mode) ==="
 echo ""
 
+# ── 0. Optional cleanup ──────────────────────────────────────────
+if [[ "${1:-}" == "--clean" ]]; then
+    echo "  🧹 Running video cleanup (files >7 days)..."
+    "$SCRIPT_DIR/cleanup-old-videos.py" --days 7 2>/dev/null || true
+    echo ""
+fi
+
 # ── 1. llama.cpp server ──────────────────────────────────────────
 if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
     echo "  ✅ llama-server already running on :8080"
@@ -21,7 +28,6 @@ else
         > "$SCRIPT_DIR/llama-server.log" 2>&1 < /dev/null &
     echo "     (╰┈➤ waiting for model to load)"
     sleep 3
-    # poll until ready (max 60s)
     for i in $(seq 1 30); do
         if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
             echo "  ✅ llama-server ready"
@@ -51,7 +57,6 @@ fi
 
 # ── 4. Backend ───────────────────────────────────────────────────
 echo "  🔄 Starting backend..."
-# kill existing gracefully
 pkill -f "uvicorn src.main_refactored" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/backend"
@@ -108,9 +113,11 @@ echo "════════════════════════�
 echo "  All services started!"
 echo ""
 echo "  Frontend  →  http://localhost:3107"
+echo "  YouTube   →  http://localhost:3107/youtube"
 echo "  Backend   →  http://localhost:8000"
 echo "  API docs  →  http://localhost:8000/docs"
 echo "═══════════════════════════════════════════"
 echo ""
-echo "To stop:  pkill -f 'uvicorn\|arq\|next dev\|llama-server'"
+echo "To stop:  ./stop-local.sh"
+echo "Cleanup:  ./cleanup-old-videos.py --dry-run"
 echo "Logs:     $SCRIPT_DIR/*.log  and  /tmp/frontend.log"
