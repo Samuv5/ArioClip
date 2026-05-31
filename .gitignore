@@ -7,3 +7,5 @@ temp/
 .env
 *.m4a
 frontend/e2e/.seed.json
+data/youtube_tokens/
+*.pickle
