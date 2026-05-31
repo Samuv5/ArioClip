@@ -836,6 +836,7 @@ class TaskService:
         caption_text: str,
         position: str,
         highlight_words: list[str],
+        subtitle_y: Optional[int] = None,
     ) -> Dict[str, Any]:
         clip = await self.clip_repo.get_clip_by_id(self.db, clip_id)
         if not clip or clip["task_id"] != task_id:
@@ -851,6 +852,7 @@ class TaskService:
             caption_text,
             position,
             highlight_words,
+            subtitle_y=subtitle_y,
         )
         copy_clip_source_ranges(input_path, output_path)
 
