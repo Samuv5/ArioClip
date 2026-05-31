@@ -199,7 +199,7 @@ export default function Home() {
 
   // Font customization states
   const [fontFamily, setFontFamily] = useState("TikTokSans-Regular");
-  const [fontSize, setFontSize] = useState(24);
+  const [fontSize, setFontSize] = useState(48);
   const [fontColor, setFontColor] = useState("#FFFFFF");
   const [availableFonts, setAvailableFonts] = useState<FontOption[]>([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(true);
@@ -315,7 +315,7 @@ export default function Home() {
         if (response.ok) {
           const data = await response.json();
           setFontFamily(data.fontFamily || "TikTokSans-Regular");
-          setFontSize(data.fontSize || 24);
+          setFontSize(data.fontSize || 48);
           setFontColor(data.fontColor || "#FFFFFF");
         }
       } catch (error) {
@@ -1238,16 +1238,16 @@ export default function Home() {
                             <Slider
                               value={[fontSize]}
                               onValueChange={(value) => setFontSize(value[0])}
-                              max={48}
-                              min={12}
+                              max={96}
+                              min={24}
                               step={2}
                               disabled={generationControlsDisabled}
                               className="w-full"
                             />
                           </div>
                           <div className="flex justify-between text-xs text-stone-400">
-                            <span>12px</span>
-                            <span>48px</span>
+                            <span>24px</span>
+                            <span>96px</span>
                           </div>
                         </div>
 

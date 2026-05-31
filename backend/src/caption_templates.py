@@ -12,7 +12,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "Default",
         "description": "Clean white text with black outline",
         "font_family": "THEBOLDFONT",
-        "font_size": 28,
+        "font_size": 64,
         "font_color": "#FFFFFF",
         "highlight_color": "#FFD700",  # Gold for current word in karaoke mode
         "stroke_color": "#000000",
@@ -27,7 +27,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "Hormozi",
         "description": "Bold green highlights like Alex Hormozi's videos",
         "font_family": "THEBOLDFONT",
-        "font_size": 36,
+        "font_size": 48,
         "font_color": "#FFFFFF",
         "highlight_color": "#00FF00",  # Bright green
         "stroke_color": "#000000",
@@ -42,7 +42,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "MrBeast",
         "description": "Large yellow text with red highlights",
         "font_family": "THEBOLDFONT",
-        "font_size": 42,
+        "font_size": 56,
         "font_color": "#FFFF00",  # Yellow
         "highlight_color": "#FF0000",  # Red
         "stroke_color": "#000000",
@@ -57,7 +57,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "Minimal",
         "description": "Clean, subtle captions with transparent background",
         "font_family": "TikTokSans-Regular",
-        "font_size": 24,
+        "font_size": 40,
         "font_color": "#FFFFFF",
         "highlight_color": "#CCCCCC",
         "stroke_color": None,
@@ -72,7 +72,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "TikTok",
         "description": "TikTok-style with pink highlights",
         "font_family": "TikTokSans-Regular",
-        "font_size": 32,
+        "font_size": 48,
         "font_color": "#FFFFFF",
         "highlight_color": "#FE2C55",  # TikTok pink
         "stroke_color": "#000000",
@@ -87,7 +87,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "Neon",
         "description": "Glowing neon effect with cyan highlights",
         "font_family": "THEBOLDFONT",
-        "font_size": 34,
+        "font_size": 48,
         "font_color": "#00FFFF",  # Cyan
         "highlight_color": "#FF00FF",  # Magenta
         "stroke_color": "#000066",  # Dark blue
@@ -102,7 +102,7 @@ CAPTION_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "name": "Podcast",
         "description": "Professional podcast-style captions",
         "font_family": "TikTokSans-Regular",
-        "font_size": 26,
+        "font_size": 42,
         "font_color": "#FFFFFF",
         "highlight_color": "#FFB800",  # Warm gold
         "stroke_color": "#333333",

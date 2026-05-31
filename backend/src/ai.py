@@ -12,6 +12,8 @@ from pydantic_ai import Agent
 from pydantic_ai.models import Model
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from .config import Config, get_config
@@ -19,10 +21,12 @@ from .runtime_settings import apply_settings_to_process_env
 
 logger = logging.getLogger(__name__)
 
-IDEAL_CLIP_MIN_SECONDS = 25
-IDEAL_CLIP_MAX_SECONDS = 50
-MIN_ACCEPTED_CLIP_SECONDS = 15
-MAX_ACCEPTED_CLIP_SECONDS = 60
+MAX_TRANSCRIPT_CHARS = 200000
+
+IDEAL_CLIP_MIN_SECONDS = 75
+IDEAL_CLIP_MAX_SECONDS = 105
+MIN_ACCEPTED_CLIP_SECONDS = 60
+MAX_ACCEPTED_CLIP_SECONDS = 120
 TRANSCRIPT_ANALYSIS_CACHE_VERSION = "longer-clips-v3-duration-repair"
 TRANSCRIPT_SPAN_RE = re.compile(
     r"^\[(?P<start>\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*"
@@ -89,18 +93,17 @@ class TranscriptSegment(BaseModel):
         description=(
             "Transcript text taken only from the selected timestamp range. "
             "Keep it verbatim or near-verbatim, and do not paraphrase or merge non-contiguous lines."
-        )
+        ),
     )
     relevance_score: float = Field(
-        default=0.75,
-        description="Relevance score from 0.0 to 1.0", ge=0.0, le=1.0
+        default=0.75, description="Relevance score from 0.0 to 1.0", ge=0.0, le=1.0
     )
     reasoning: str = Field(
         default="Selected by the AI model as a clip candidate.",
         description=(
             "Brief factual explanation of why this exact segment works as a clip. "
             "Base it only on the provided transcript content."
-        )
+        ),
     )
     virality: ViralityAnalysis = Field(
         default_factory=_default_virality_analysis,
@@ -179,7 +182,7 @@ OUTPUT CONTRACT:
 - Each item in "most_relevant_segments" must include: "start_time", "end_time", "text", "relevance_score", "reasoning", and "virality".
 - Do not use "segment" as an output field. Use "text".
 - "virality" must include: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", and "virality_reasoning".
-- Every returned segment must be 15-60 seconds long. Prefer 25-50 seconds.
+- Every returned segment must be 60-120 seconds long. Prefer 75-105 seconds.
 
 CORE OBJECTIVES:
 1. Identify segments that would be compelling on social media platforms
@@ -263,12 +266,12 @@ Identify 2-4 moments in each segment where B-roll footage could enhance the vide
 - Use simple, searchable keywords (e.g., "coffee shop", "laptop coding", "money stack")
 
 TIMING GUIDELINES:
-- Target 25-50 seconds for most clips
-- Use 15-24 seconds only when the moment is exceptionally dense, self-contained, and complete
-- CRITICAL: start_time MUST be different from end_time (minimum 15 seconds apart)
+- Target 75-105 seconds for most clips
+- Use 60-74 seconds only when the moment is exceptionally dense, self-contained, and complete
+- CRITICAL: start_time MUST be different from end_time (minimum 60 seconds apart)
 - Focus on natural content boundaries rather than arbitrary time limits
 - Include enough context for the segment to be understandable
-- Prefer roughly 30-50 seconds when possible
+- Prefer roughly 60-105 seconds when possible
 - Start at the hook or the minimum setup needed to make the hook land, and end after the payoff
 - If a highlight is only one good line, expand to include the surrounding setup and payoff rather than returning a tiny fragment
 - Stop expanding when the topic drifts, the speaker repeats the same point, or the clip loses momentum
@@ -277,8 +280,8 @@ TIMESTAMP REQUIREMENTS - EXTREMELY IMPORTANT:
 - Use EXACT timestamps as they appear in the transcript
 - Never modify timestamp format (keep MM:SS structure)
 - start_time MUST be LESS THAN end_time (start_time < end_time)
-- MINIMUM segment duration: 15 seconds (end_time - start_time >= 15 seconds)
-- IDEAL segment duration: 25-50 seconds
+- MINIMUM segment duration: 60 seconds (end_time - start_time >= 60 seconds)
+- IDEAL segment duration: 75-105 seconds
 - Look at transcript ranges like [02:25 - 02:35] and use different start/end times
 - NEVER use the same timestamp for both start_time and end_time
 - Example: start_time: "02:25", end_time: "02:35" (NOT "02:25" and "02:25")
@@ -306,7 +309,9 @@ def _split_llm_name(model_name: str) -> tuple[str, str | None]:
     return provider.strip().lower(), provider_model_name.strip() or None
 
 
-def _get_missing_llm_key_error(model_name: str, runtime_config: Config) -> Optional[str]:
+def _get_missing_llm_key_error(
+    model_name: str, runtime_config: Config
+) -> Optional[str]:
     """Return a clear configuration error when the selected LLM key is missing."""
     provider, provider_model_name = _split_llm_name(model_name)
 
@@ -328,11 +333,14 @@ def _get_missing_llm_key_error(model_name: str, runtime_config: Config) -> Optio
             "Set GOOGLE_API_KEY or set LLM to openai:* / anthropic:* / ollama:* with the matching API key."
         )
 
-    if provider == "openai" and not runtime_config.openai_api_key:
-        return (
-            "Selected LLM provider is OpenAI, but OPENAI_API_KEY is not set. "
-            "Set OPENAI_API_KEY or choose another provider with a matching API key."
-        )
+    if provider == "openai":
+        if not runtime_config.openai_api_key and not runtime_config.openai_base_url:
+            return (
+                "Selected LLM provider is OpenAI, but OPENAI_API_KEY is not set "
+                "and OPENAI_BASE_URL is not set either. "
+                "Set OPENAI_API_KEY for the OpenAI API, or set OPENAI_BASE_URL "
+                "to point to a local OpenAI-compatible endpoint (e.g. llama.cpp)."
+            )
 
     if provider == "anthropic" and not runtime_config.anthropic_api_key:
         return (
@@ -350,22 +358,37 @@ def _get_missing_llm_key_error(model_name: str, runtime_config: Config) -> Optio
 
 def _build_transcript_model(runtime_config: Config) -> Model | str:
     provider, provider_model_name = _split_llm_name(runtime_config.llm)
-    if provider != "ollama":
-        return runtime_config.llm
 
-    if not provider_model_name:
-        raise RuntimeError(
-            "Selected LLM provider is Ollama, but no model name was provided. "
-            "Use the format ollama:<model>, for example ollama:gpt-oss:20b."
+    if provider == "ollama":
+        if not provider_model_name:
+            raise RuntimeError(
+                "Selected LLM provider is Ollama, but no model name was provided. "
+                "Use the format ollama:<model>, for example ollama:gpt-oss:20b."
+            )
+        return OllamaModel(
+            provider_model_name,
+            provider=OllamaProvider(
+                base_url=runtime_config.resolve_ollama_base_url(),
+                api_key=runtime_config.ollama_api_key,
+            ),
         )
 
-    return OllamaModel(
-        provider_model_name,
-        provider=OllamaProvider(
-            base_url=runtime_config.resolve_ollama_base_url(),
-            api_key=runtime_config.ollama_api_key,
-        ),
-    )
+    if provider == "openai" and runtime_config.openai_base_url:
+        if not provider_model_name:
+            raise RuntimeError(
+                "Selected LLM provider is OpenAI with custom base URL, "
+                "but no model name was provided. "
+                "Use the format openai:<model-name>."
+            )
+        return OpenAIModel(
+            provider_model_name,
+            provider=OpenAIProvider(
+                base_url=runtime_config.openai_base_url,
+                api_key=runtime_config.openai_api_key or "",
+            ),
+        )
+
+    return runtime_config.llm
 
 
 def get_transcript_agent() -> Agent[None, TranscriptAnalysis]:
@@ -380,6 +403,7 @@ def get_transcript_agent() -> Agent[None, TranscriptAnalysis]:
         runtime_config.anthropic_api_key,
         runtime_config.ollama_base_url,
         runtime_config.ollama_api_key,
+        runtime_config.openai_base_url,
     )
     if _transcript_agent is None or _transcript_agent_signature != signature:
         apply_settings_to_process_env(runtime_config.as_runtime_settings())
@@ -406,9 +430,7 @@ def build_transcript_analysis_prompt(
     """Build the grounded task prompt for transcript analysis."""
     broll_instruction = ""
     if include_broll:
-        broll_instruction = (
-            "\n5. Also identify B-roll opportunities for each chosen segment where stock footage could enhance the visual appeal."
-        )
+        broll_instruction = "\n5. Also identify B-roll opportunities for each chosen segment where stock footage could enhance the visual appeal."
     signal_section = ""
     if clip_signals:
         signal_section = (
@@ -432,9 +454,9 @@ Follow this workflow:
 
 Selection target:
 - Choose 2-5 segments total.
-- Most selected clips should be 25-50 seconds.
-- Only choose a 15-24 second clip when it already contains a full setup and payoff.
-- If a strong moment is shorter than 25 seconds, first try expanding to nearby contiguous transcript lines that add useful context.
+- Most selected clips should be 75-105 seconds.
+- Only choose a 60-74 second clip when it already contains a full setup and payoff.
+- If a strong moment is shorter than 75 seconds, first try expanding to nearby contiguous transcript lines that add useful context.
 - Skip weak standalone picks: intros, sponsor reads, CTAs, contextless quotes, repeated points, vague setup, and answer fragments that require prior context.
 - Before returning a segment, ask whether a viewer would understand and care without seeing the rest of the source video.
 
@@ -451,7 +473,7 @@ Critical accuracy requirements:
 JSON-only output requirements:
 - Return one valid JSON object and nothing else.
 - No Markdown, headings, bullets, code fences, or explanatory text outside JSON.
-- Top-level keys: "most_relevant_segments", "summary", "key_topics"{', "broll_opportunities"' if include_broll else ''}.
+- Top-level keys: "most_relevant_segments", "summary", "key_topics"{', "broll_opportunities"' if include_broll else ""}.
 - Segment keys: "start_time", "end_time", "text", "relevance_score", "reasoning", "virality".
 - Virality keys: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", "virality_reasoning".
 - Do not return segments shorter than {MIN_ACCEPTED_CLIP_SECONDS} seconds or longer than {MAX_ACCEPTED_CLIP_SECONDS} seconds.
@@ -513,9 +535,7 @@ def _extract_transcript_text(
     selected_text = [
         span["text"]
         for span in transcript_spans
-        if span["text"]
-        and span["end"] > start_seconds
-        and span["start"] < end_seconds
+        if span["text"] and span["end"] > start_seconds and span["start"] < end_seconds
     ]
     return " ".join(selected_text).strip()
 
@@ -565,7 +585,11 @@ def _choose_repaired_bounds(
                     elif duration > IDEAL_CLIP_MAX_SECONDS:
                         ideal_penalty = duration - IDEAL_CLIP_MAX_SECONDS
                     candidate_ranges.append(
-                        (ideal_penalty * 1000 + extra_context, candidate_start, candidate_end)
+                        (
+                            ideal_penalty * 1000 + extra_context,
+                            candidate_start,
+                            candidate_end,
+                        )
                     )
         if candidate_ranges:
             _, repaired_start, repaired_end = min(candidate_ranges)
@@ -613,6 +637,39 @@ async def get_most_relevant_parts_by_transcript(
     transcript: str, include_broll: bool = False, clip_signals: str | None = None
 ) -> TranscriptAnalysis:
     """Get the most relevant parts of a transcript with virality scoring and optional B-roll detection."""
+    if len(transcript) > MAX_TRANSCRIPT_CHARS:
+        logger.warning(
+            f"Transcript too long ({len(transcript)} chars), truncating to {MAX_TRANSCRIPT_CHARS}"
+        )
+        lines = transcript.splitlines()
+        budget = MAX_TRANSCRIPT_CHARS - len("\n[...truncated...]\n")
+        take_first = int(len(lines) * 0.5)
+        first_portion = "\n".join(lines[:take_first])
+        remaining_budget = budget - len(first_portion) - len("\n[...truncated...]\n")
+        if remaining_budget > 0:
+            last_lines = []
+            count = 0
+            for line in reversed(lines[take_first:]):
+                needed = len(line) + 1
+                if count + needed > remaining_budget:
+                    break
+                last_lines.insert(0, line)
+                count += needed
+            transcript = first_portion + "\n[...truncated...]\n" + "\n".join(last_lines)
+        else:
+            first_lines = []
+            count = 0
+            for line in lines:
+                needed = len(line) + 1
+                if count + needed > budget:
+                    break
+                first_lines.append(line)
+                count += needed
+            transcript = "\n".join(first_lines)
+        logger.info(
+            f"Truncated transcript to {len(transcript)} chars ({len(transcript.splitlines())} lines)"
+        )
+
     logger.info(
         f"Starting AI analysis of transcript ({len(transcript)} chars), include_broll={include_broll}"
     )
@@ -653,14 +710,15 @@ async def get_most_relevant_parts_by_transcript(
 
             # Parse timestamps to validate duration
             try:
-                start_seconds = _parse_transcript_timestamp_seconds(
-                    segment.start_time
-                )
+                start_seconds = _parse_transcript_timestamp_seconds(segment.start_time)
                 end_seconds = _parse_transcript_timestamp_seconds(segment.end_time)
 
                 duration = end_seconds - start_seconds
 
-                if duration < MIN_ACCEPTED_CLIP_SECONDS or duration > MAX_ACCEPTED_CLIP_SECONDS:
+                if (
+                    duration < MIN_ACCEPTED_CLIP_SECONDS
+                    or duration > MAX_ACCEPTED_CLIP_SECONDS
+                ):
                     repaired_bounds = _repair_segment_bounds(
                         segment,
                         transcript_spans,

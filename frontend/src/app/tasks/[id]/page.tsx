@@ -192,7 +192,7 @@ export default function TaskPage() {
         const taskData = await taskResponse.json();
         setTask(taskData);
         setProjectFontFamily(taskData.font_family || "TikTokSans-Regular");
-        setProjectFontSize(String(taskData.font_size || 24));
+        setProjectFontSize(String(taskData.font_size || 48));
         setProjectFontColor(taskData.font_color || "#FFFFFF");
         setProjectCaptionTemplate(taskData.caption_template || "default");
         setProjectIncludeBroll(Boolean(taskData.include_broll));

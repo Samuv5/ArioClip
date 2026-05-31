@@ -1,6 +1,6 @@
 """
 Utility functions for video-related operations.
-Optimized for ffmpeg, AssemblyAI integration, and high-quality output.
+Optimized for ffmpeg, WhisperX transcription, and high-quality output.
 """
 
 from pathlib import Path
@@ -14,16 +14,14 @@ import uuid
 import shutil
 import subprocess
 import tempfile
-import time
 
 import cv2
 
-import assemblyai as aai
-import httpx
 import srt
 from datetime import timedelta
 
 from .config import get_config
+from .transcriber import transcribe as whisperx_transcribe
 from .clip_cleanup import DEFAULT_FILTERED_WORDS, clip_cleanup_enabled
 from .clip_source_map import (
     normalize_source_ranges,
@@ -85,7 +83,6 @@ class VideoProcessor:
             "medium": {
                 "codec": "libx264",
                 "audio_codec": "aac",
-                "bitrate": "4000k",
                 "audio_bitrate": "192k",
                 "preset": "fast",
                 "ffmpeg_params": ["-crf", "23", "-pix_fmt", "yuv420p"],
@@ -94,150 +91,16 @@ class VideoProcessor:
         return settings.get(target_quality, settings["high"])
 
 
-def _prepare_audio_for_transcription(video_path: Path) -> Path:
-    """Extract a compact audio-only file before uploading to AssemblyAI."""
-    audio_path = video_path.with_name(f"{video_path.stem}.assemblyai.mp3")
-    if audio_path.exists() and audio_path.stat().st_size > 0:
-        return audio_path
-
-    command = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        str(video_path),
-        "-vn",
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-        "-b:a",
-        "64k",
-        str(audio_path),
-    ]
-    result = run_ffmpeg_command(command, timeout=900)
-    if result.returncode != 0 or not audio_path.exists() or audio_path.stat().st_size == 0:
-        logger.warning(
-            "Failed to extract transcription audio with ffmpeg; falling back to source video"
-        )
-        return video_path
-
-    logger.info(
-        "Prepared transcription audio: %s (%.2f MB)",
-        audio_path,
-        audio_path.stat().st_size / (1024 * 1024),
-    )
-    return audio_path
-
-
-def _submit_and_wait_for_assemblyai_transcript(
-    transcriber,
-    media_path: Path,
-    config_obj,
-    timeout_seconds: int,
-):
-    """Submit a transcript job and poll with a total timeout."""
-    submitted = transcriber.submit(str(media_path), config=config_obj)
-    if not submitted.id:
-        raise RuntimeError("AssemblyAI did not return a transcript ID")
-
-    logger.info("AssemblyAI transcript submitted: %s", submitted.id)
-    deadline = time.monotonic() + timeout_seconds
-    next_log_at = 0.0
-
-    while True:
-        response = aai.api.get_transcript(
-            submitted._client.http_client,  # noqa: SLF001 - AssemblyAI exposes no timeout-aware poller.
-            submitted.id,
-        )
-        transcript = aai.Transcript.from_response(
-            client=submitted._client,  # noqa: SLF001
-            response=response,
-        )
-
-        if transcript.status in (
-            aai.TranscriptStatus.completed,
-            aai.TranscriptStatus.error,
-        ):
-            return transcript
-
-        now = time.monotonic()
-        if now >= deadline:
-            raise TimeoutError(
-                f"AssemblyAI transcript {submitted.id} did not complete within {timeout_seconds}s"
-            )
-
-        if now >= next_log_at:
-            logger.info(
-                "AssemblyAI transcript %s still %s",
-                submitted.id,
-                transcript.status,
-            )
-            next_log_at = now + 30
-
-        time.sleep(aai.settings.polling_interval)
-
-
-def get_video_transcript(video_path: Path, speech_model: str = "best") -> str:
-    """Get transcript using AssemblyAI with word-level timing for precise subtitles."""
-    logger.info(f"Getting transcript for: {video_path}")
-
-    # Configure AssemblyAI
-    runtime_config = get_config()
-    aai.settings.api_key = runtime_config.assembly_ai_api_key
-    aai.settings.http_timeout = runtime_config.assembly_ai_http_timeout_seconds
-    transcriber = aai.Transcriber()
-
-    # Request word-level timestamps for precise subtitle sync
-    speech_model_value = aai.SpeechModel.best
-    if speech_model == "nano":
-        speech_model_value = aai.SpeechModel.nano
-
-    config_obj = aai.TranscriptionConfig(
-        speaker_labels=True,
-        punctuate=True,
-        format_text=True,
-        speech_model=speech_model_value,
-    )
-
+def get_video_transcript(video_path: Path, speech_model: str = "small") -> str:
+    """Get transcript using local WhisperX with word-level timing."""
+    logger.info(f"Getting transcript for: {video_path} (model={speech_model})")
     try:
-        logger.info("Starting AssemblyAI transcription")
-        transcription_media_path = _prepare_audio_for_transcription(video_path)
-        transcript = None
-        for attempt in range(1, 4):
-            try:
-                transcript = _submit_and_wait_for_assemblyai_transcript(
-                    transcriber,
-                    transcription_media_path,
-                    config_obj,
-                    runtime_config.assembly_ai_http_timeout_seconds,
-                )
-                break
-            except (httpx.TimeoutException, TimeoutError):
-                logger.warning(
-                    "AssemblyAI transcription timed out on attempt %s/3",
-                    attempt,
-                )
-                if attempt == 3:
-                    raise
-
-        if transcript is None:
-            raise RuntimeError("AssemblyAI transcription did not return a transcript")
-
-        if transcript.status == aai.TranscriptStatus.error:
-            logger.error(f"AssemblyAI transcription failed: {transcript.error}")
-            raise Exception(f"Transcription failed: {transcript.error}")
-
+        transcript = whisperx_transcribe(video_path, speech_model)
         formatted_lines = format_transcript_for_analysis(transcript)
-
-        # Cache the raw transcript for subtitle generation
         cache_transcript_data(video_path, transcript)
-
         result = "\n".join(formatted_lines)
-        logger.info(
-            f"Transcript formatted: {len(formatted_lines)} segments, {len(result)} chars"
-        )
+        logger.info(f"Transcript formatted: {len(formatted_lines)} segments, {len(result)} chars")
         return result
-
     except Exception as e:
         logger.error(f"Error in transcription: {e}")
         raise
@@ -389,9 +252,8 @@ def clamp_even(value: int, minimum: int, maximum: int) -> int:
 
 
 def get_scaled_font_size(base_font_size: int, video_width: int) -> int:
-    """Scale caption font size by output width with sensible bounds."""
     scaled_size = int(base_font_size * (video_width / 720))
-    return max(24, min(64, scaled_size))
+    return max(24, min(120, scaled_size))
 
 
 def get_subtitle_max_width(video_width: int) -> int:
@@ -1082,7 +944,7 @@ def extend_keep_ranges_to_sentence_boundary(
     return [*normalized[:-1], (last_start, extended_end)]
 
 
-def build_assemblyai_ass_subtitles(
+def build_transcript_ass_subtitles(
     video_path: Path,
     clip_start: float,
     clip_end: float,
@@ -1103,7 +965,7 @@ def build_assemblyai_ass_subtitles(
 
     template = get_template(caption_template)
     effective_font_family = font_family or template["font_family"]
-    effective_font_size = int(font_size) if font_size else int(template["font_size"])
+    effective_font_size = int(template["font_size"]) if font_size <= 0 else int(font_size)
     effective_font_color = font_color or template["font_color"]
     animation = template.get("animation", "none")
 
@@ -1464,6 +1326,95 @@ def detect_speaker_reframe_plan(
         return None
 
 
+def detect_auto_center_plan(clip_path: Path) -> Optional[Dict[str, Any]]:
+    """Build a dynamic face-tracking crop plan for auto-centering the speaker."""
+    try:
+        width, height = ffprobe_video_size(clip_path)
+        if width / max(height, 1) <= 1.2:
+            return None
+
+        duration = ffprobe_duration(clip_path)
+        if duration <= 2:
+            return None
+
+        crop_w = round_to_even(min(width, int(height * 9 / 16)))
+        if crop_w >= width:
+            return None
+
+        timed_samples = _sample_face_trace(clip_path, 0, duration)
+        if len(timed_samples) < 4:
+            logger.info("Auto-center: insufficient face samples (%d)", len(timed_samples))
+            return None
+
+        x_expression = _build_trace_x_expression(timed_samples, crop_w, width)
+        if not x_expression:
+            return None
+
+        logger.info("Auto-center: %d face samples, dynamic tracking enabled", len(timed_samples))
+        return {
+            "crop_w": crop_w,
+            "crop_h": height,
+            "x_expression": x_expression,
+        }
+    except Exception as exc:
+        logger.warning("Auto-center plan failed: %s", exc)
+        return None
+
+
+def _sample_face_trace(
+    video_path: Path, start_time: float, end_time: float,
+) -> List[Tuple[float, int]]:
+    """Return [(time_sec, face_center_x), ...] at regular intervals."""
+    import cv2
+    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    capture = cv2.VideoCapture(str(video_path))
+    if not capture.isOpened():
+        return []
+
+    duration = end_time - start_time
+    interval = max(0.5, duration / 20)
+    samples = []
+    width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+
+    t = start_time
+    while t < end_time:
+        capture.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+        ok, frame = capture.read()
+        if not ok or frame is None:
+            t += interval
+            continue
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+        if len(faces) > 0:
+            x, y, w, h = faces[0]
+            samples.append((t, x + w // 2))
+        t += interval
+
+    capture.release()
+    return samples
+
+
+def _build_trace_x_expression(
+    samples: List[Tuple[float, int]], crop_w: int, frame_width: int,
+) -> str:
+    """Build ffmpeg if-else expression tracking face x-center over time."""
+    if not samples:
+        return ""
+
+    clamped = []
+    for t, cx in samples:
+        x_offset = max(0, min(cx - crop_w // 2, frame_width - crop_w))
+        x_offset = round_to_even(x_offset)
+        clamped.append((t, x_offset))
+
+    clamped.sort(key=lambda s: s[0])
+    last_x = clamped[-1][1]
+    expression = str(last_x)
+    for t, x_offset in reversed(clamped[:-1]):
+        expression = f"if(lt(t\\,{t:.4f})\\,{x_offset}\\,{expression})"
+    return expression
+
+
 def build_static_vertical_filter(input_path: Path, width: int, height: int) -> str:
     duration = ffprobe_duration(input_path)
     crop_x, crop_y, crop_w, crop_h = detect_optimal_crop_region(
@@ -1491,7 +1442,9 @@ def render_reframed_clip_ffmpeg(
         if output_format in {"vertical_pan", "vertical_split"}
         else None
     )
-    if plan and plan["mode"] == "pan":
+    if not plan and output_format == "vertical":
+        plan = detect_auto_center_plan(input_path)
+    if plan and "x_expression" in plan:
         video_filter = (
             f"crop={plan['crop_w']}:{plan['crop_h']}:x='{plan['x_expression']}':y=0,"
             "scale=1080:1920:flags=lanczos,setsar=1"
@@ -2123,7 +2076,7 @@ def create_optimized_clip(
             if not framed_ok:
                 raise RuntimeError("ffmpeg reframe render failed")
 
-            if add_subtitles and build_assemblyai_ass_subtitles(
+            if add_subtitles and build_transcript_ass_subtitles(
                 video_path,
                 start_time,
                 end_time,

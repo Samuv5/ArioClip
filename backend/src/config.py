@@ -19,13 +19,17 @@ class Config:
         self.ollama_base_url = self._get_runtime_setting("OLLAMA_BASE_URL")
         self.ollama_api_key = self._get_runtime_setting("OLLAMA_API_KEY")
 
+        self.openai_base_url = (
+            self._get_optional_env("OPENAI_BASE_URL") or self.ollama_base_url
+        )
+        self.whisperx_model = os.getenv("WHISPERX_MODEL") or os.getenv(
+            "WHISPER_MODEL", "small"
+        )
         self.whisper_model = os.getenv("WHISPER_MODEL", "base")
         self.llm = self._get_runtime_setting("LLM") or self._infer_default_llm()
-        self.assembly_ai_api_key = self._get_runtime_setting("ASSEMBLY_AI_API_KEY")
-        self.assembly_ai_http_timeout_seconds = int(
-            os.getenv("ASSEMBLY_AI_HTTP_TIMEOUT_SECONDS", "900")
-        )
         self.pexels_api_key = self._get_runtime_setting("PEXELS_API_KEY")
+        self.youtube_client_id = self._get_optional_env("YOUTUBE_CLIENT_ID")
+        self.youtube_client_secret = self._get_optional_env("YOUTUBE_CLIENT_SECRET")
         self.apify_api_token = self._get_runtime_setting("APIFY_API_TOKEN")
         self.youtube_download_provider = self._normalize_youtube_download_provider(
             os.getenv("YOUTUBE_DOWNLOAD_PROVIDER", "yt_dlp")
@@ -81,8 +85,12 @@ class Config:
         self.app_base_url = (
             self._get_optional_env("NEXT_PUBLIC_APP_URL") or "http://localhost:3107"
         ).rstrip("/")
-        self.discord_feedback_webhook_url = self._get_optional_env("DISCORD_FEEDBACK_WEBHOOK_URL")
-        self.discord_sales_webhook_url = self._get_optional_env("DISCORD_SALES_WEBHOOK_URL")
+        self.discord_feedback_webhook_url = self._get_optional_env(
+            "DISCORD_FEEDBACK_WEBHOOK_URL"
+        )
+        self.discord_sales_webhook_url = self._get_optional_env(
+            "DISCORD_SALES_WEBHOOK_URL"
+        )
         self.default_processing_mode = os.getenv("DEFAULT_PROCESSING_MODE", "fast")
         self.fast_mode_max_clips = int(os.getenv("FAST_MODE_MAX_CLIPS", "4"))
         self.fast_mode_transcript_model = os.getenv(
@@ -108,9 +116,9 @@ class Config:
 
     def as_runtime_settings(self) -> dict[str, str | None]:
         return {
-            "ASSEMBLY_AI_API_KEY": self.assembly_ai_api_key,
             "LLM": self.llm,
             "OPENAI_API_KEY": self.openai_api_key,
+            "OPENAI_BASE_URL": self.openai_base_url,
             "GOOGLE_API_KEY": self.google_api_key,
             "ANTHROPIC_API_KEY": self.anthropic_api_key,
             "OLLAMA_BASE_URL": self.ollama_base_url,
@@ -173,17 +181,16 @@ class Config:
         return LOCAL_OLLAMA_BASE_URL
 
     def _infer_default_llm(self) -> str:
-        """
-        Infer a usable default model based on whichever API key is present.
-        Falls back to Google for backward compatibility.
-        """
-        if self.google_api_key:
-            return "google-gla:gemini-3-flash-preview"
+        """Infer a usable default model based on configuration."""
+        if self.openai_base_url:
+            return "openai:gemma-3-4b-it"
         if self.openai_api_key:
             return "openai:gpt-5.2"
+        if self.google_api_key:
+            return "google-gla:gemini-3-flash-preview"
         if self.anthropic_api_key:
             return "anthropic:claude-4-sonnet"
-        return "google-gla:gemini-3-flash-preview"
+        return "openai:gemma-3-4b-it"
 
 
 def get_config() -> Config:

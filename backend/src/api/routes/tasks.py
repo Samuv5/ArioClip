@@ -32,12 +32,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def _normalize_font_size(value: Any, default: int = 24) -> int:
+def _normalize_font_size(value: Any, default: int = 0) -> int:
     try:
         parsed = int(value)
     except (TypeError, ValueError):
         parsed = default
-    return max(12, min(72, parsed))
+    return max(0, min(96, parsed))
 
 
 def _normalize_font_color(value: Any, default: str = "#FFFFFF") -> str:

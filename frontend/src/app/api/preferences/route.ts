@@ -34,7 +34,7 @@ export async function GET() {
 
     return NextResponse.json({
       fontFamily: user.default_font_family || "TikTokSans-Regular",
-      fontSize: user.default_font_size || 24,
+      fontSize: user.default_font_size || 48,
       fontColor: user.default_font_color || "#FFFFFF",
       notifyOnCompletion: user.notify_on_completion ?? true,
     });
