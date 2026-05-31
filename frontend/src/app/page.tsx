@@ -682,6 +682,11 @@ export default function Home() {
                   </Button>
                 </Link>
               )}
+              <Link href="/youtube">
+                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
+                  YouTube
+                </Button>
+              </Link>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>

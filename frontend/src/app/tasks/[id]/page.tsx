@@ -51,6 +51,8 @@ import {
   Settings2,
   Type,
   Clapperboard,
+  Youtube,
+  Upload,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
@@ -84,6 +86,7 @@ interface TaskDetails {
   user_id: string;
   source_id: string;
   source_title: string;
+  source_url: string;
   source_type: string;
   status: string;
   progress?: number;
@@ -148,6 +151,16 @@ export default function TaskPage() {
     Array<{ id: string; name: string; description: string; animation: string }>
   >([]);
   const hasTriggeredAutoRefresh = useRef(false);
+
+  // YouTube upload state
+  const [youtubeModalClip, setYoutubeModalClip] = useState<Clip | null>(null);
+  const [youtubeChannels, setYoutubeChannels] = useState<string[]>([]);
+  const [youtubeTitle, setYoutubeTitle] = useState("");
+  const [youtubeDescription, setYoutubeDescription] = useState("");
+  const [youtubeSelectedChannels, setYoutubeSelectedChannels] = useState<string[]>([]);
+  const [youtubeUploading, setYoutubeUploading] = useState(false);
+  const [youtubeStatus, setYoutubeStatus] = useState("");
+  const [youtubeSuggesting, setYoutubeSuggesting] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const taskApiUrl = "/api/tasks";
@@ -633,6 +646,62 @@ export default function TaskPage() {
       return;
     }
     void handleExportClip(clip.id, clip.filename);
+  };
+
+  const openYoutubeModal = async (clip: Clip) => {
+    setYoutubeModalClip(clip);
+    setYoutubeSelectedChannels([]);
+    setYoutubeUploading(false);
+    setYoutubeStatus("");
+    setYoutubeTitle("");
+    setYoutubeDescription("");
+    setYoutubeSuggesting(true);
+    try {
+      const [channelsRes] = await Promise.all([
+        fetch(`${apiUrl}/api/youtube/channels`),
+      ]);
+      if (channelsRes.ok) setYoutubeChannels(await channelsRes.json());
+    } catch { /* ignore */ }
+    try {
+      const metadataRes = await fetch(`${apiUrl}/api/youtube/generate-metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clip_text: clip.text,
+          source_title: task?.source_title || "",
+          original_url: task?.source_url || "",
+        }),
+      });
+      if (metadataRes.ok) {
+        const data = await metadataRes.json();
+        setYoutubeTitle(data.title || "");
+        setYoutubeDescription(data.description || "");
+      }
+    } catch { /* ignore */ }
+    setYoutubeSuggesting(false);
+  };
+
+  const handleYoutubeUpload = async () => {
+    if (!youtubeModalClip || !youtubeSelectedChannels.length) return;
+    setYoutubeUploading(true);
+    setYoutubeStatus("Uploading...");
+    try {
+      const res = await fetch(`${apiUrl}/api/youtube/upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          video: youtubeModalClip.filename,
+          title: youtubeTitle,
+          description: youtubeDescription,
+          tags: task?.source_title || "",
+          channels: youtubeSelectedChannels,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) setYoutubeStatus(data.results?.join("\n") || "Uploaded");
+      else setYoutubeStatus(`Error: ${data.detail || "Unknown error"}`);
+    } catch { setYoutubeStatus("Error uploading"); }
+    setYoutubeUploading(false);
   };
 
   if (isLoading) {
@@ -1317,6 +1386,15 @@ export default function TaskPage() {
 
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => openYoutubeModal(clip)}
+                        >
+                          <Youtube className="w-4 h-4 text-red-500" />
+                          YouTube
+                        </Button>
+
+                        <Button
+                          size="sm"
                           variant="ghost"
                           aria-label="Delete clip"
                           className="ml-auto text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -1395,6 +1473,98 @@ export default function TaskPage() {
           </div>
         )}
       </div>
+
+      {/* YouTube Upload Modal */}
+      {youtubeModalClip && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !youtubeUploading && setYoutubeModalClip(null)}>
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Youtube className="w-5 h-5 text-red-500" />
+                Upload to YouTube
+              </h2>
+              <button className="text-gray-400 hover:text-gray-600" onClick={() => setYoutubeModalClip(null)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600">
+              Clip #{youtubeModalClip.clip_order} — {youtubeModalClip.start_time} to {youtubeModalClip.end_time}
+            </p>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Title</label>
+              {youtubeSuggesting ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                  Generating AI suggestion...
+                </div>
+              ) : null}
+              <Input value={youtubeTitle} onChange={(e) => setYoutubeTitle(e.target.value)} placeholder="Video title" />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Description</label>
+              <textarea
+                className="w-full min-h-[100px] border rounded-lg px-3 py-2 text-sm"
+                value={youtubeDescription}
+                onChange={(e) => setYoutubeDescription(e.target.value)}
+                placeholder="Video description"
+              />
+            </div>
+
+            {task?.source_url && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Original video link</label>
+                <Input value={task.source_url} readOnly className="text-xs text-blue-600" />
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Target channels</label>
+              {youtubeChannels.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No channels authenticated.{' '}
+                  <a href="/youtube" className="text-blue-600 underline" target="_blank">Manage channels</a>
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {youtubeChannels.map((ch) => (
+                    <label key={ch} className={`cursor-pointer rounded-full px-3 py-1 text-sm border ${
+                      youtubeSelectedChannels.includes(ch) ? "bg-red-600 text-white border-red-600" : "bg-stone-100"
+                    }`}>
+                      <input type="checkbox" className="hidden"
+                             checked={youtubeSelectedChannels.includes(ch)}
+                             onChange={() => setYoutubeSelectedChannels((prev) =>
+                               prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]
+                             )} />
+                      {ch}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Button
+              className="w-full bg-red-600 hover:bg-red-700 text-white"
+              disabled={youtubeUploading || !youtubeTitle || !youtubeSelectedChannels.length}
+              onClick={handleYoutubeUpload}
+            >
+              {youtubeUploading ? (
+                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" /> Uploading...</>
+              ) : (
+                <><Upload className="w-4 h-4 mr-2" /> Upload to YouTube</>
+              )}
+            </Button>
+
+            {youtubeStatus && (
+              <pre className="bg-stone-900 text-green-400 p-3 rounded-lg text-sm whitespace-pre-wrap">
+                {youtubeStatus}
+              </pre>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete Task Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
