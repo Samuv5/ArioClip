@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 RUNTIME_SETTING_KEYS: tuple[str, ...] = (
-    "ASSEMBLY_AI_API_KEY",
     "LLM",
     "OPENAI_API_KEY",
     "GOOGLE_API_KEY",
