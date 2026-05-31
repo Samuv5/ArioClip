@@ -296,6 +296,7 @@ export default function TaskEditPage() {
         body: JSON.stringify({
           caption_text: captionText,
           position: captionPosition,
+          subtitle_y: subtitleY,
           highlight_words: highlightWords,
         }),
       });

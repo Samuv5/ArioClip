@@ -629,6 +629,9 @@ async def update_clip_captions(
         payload = await request.json()
         caption_text = str(payload.get("caption_text", "")).strip()
         position = str(payload.get("position", "bottom"))
+        subtitle_y = payload.get("subtitle_y")
+        if subtitle_y is not None:
+            subtitle_y = int(subtitle_y)
         highlight_words = payload.get("highlight_words") or []
         if not isinstance(highlight_words, list):
             raise HTTPException(
@@ -643,6 +646,7 @@ async def update_clip_captions(
             caption_text,
             position,
             [str(word) for word in highlight_words],
+            subtitle_y=subtitle_y,
         )
         return {"clip": updated_clip}
     except ValueError as e:

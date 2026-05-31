@@ -956,6 +956,7 @@ def build_transcript_ass_subtitles(
     font_color: str = "#FFFFFF",
     caption_template: str = "default",
     keep_ranges: Optional[List[Tuple[float, float]]] = None,
+    subtitle_y: Optional[int] = None,
 ) -> bool:
     """Generate ASS subtitles from cached AssemblyAI word timings."""
     transcript_data = load_cached_transcript_data(video_path)
@@ -989,7 +990,12 @@ def build_transcript_ass_subtitles(
     outline_px = int(template.get("stroke_width", 2) or 0)
     shadow_px = 2 if template.get("shadow") else 0
     pos_y = float(template.get("position_y", 0.75))
-    y_pos = int(video_height * pos_y)
+    if subtitle_y is not None:
+        # CSS bottom% -> top-down y
+        y_pos = int(video_height * (100 - subtitle_y) / 100)
+    else:
+        y_pos = int(video_height * pos_y)
+    margin = int(video_width * 0.06)  # 6% of width as left/right margin
     font_name = ass_font_name(effective_font_family)
     border_style = 3 if template.get("background") and template.get("background_color") else 1
 
@@ -1002,7 +1008,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_name},{font_px},{primary},&H000000FF,{outline},{back_color},1,0,0,0,100,100,0,0,{border_style},{outline_px},{shadow_px},5,60,60,60,1
+Style: Default,{font_name},{font_px},{primary},&H000000FF,{outline},{back_color},1,0,0,0,100,100,0,0,{border_style},{outline_px},{shadow_px},5,{margin},{margin},{margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

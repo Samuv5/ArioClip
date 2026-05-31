@@ -244,6 +244,7 @@ def overlay_custom_captions(
     caption_text: str,
     position: str,
     highlight_words: List[str],
+    subtitle_y: Optional[int] = None,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / _safe_name("caption")
@@ -254,14 +255,19 @@ def overlay_custom_captions(
 
     width, height = _ffprobe_size(input_path)
     duration = _ffprobe_duration(input_path)
-    y_position = {
-        "top": int(height * 0.18),
-        "middle": int(height * 0.52),
-        "bottom": int(height * 0.78),
-    }.get(position, int(height * 0.78))
+    if subtitle_y is not None:
+        # CSS bottom% -> ASS top-down y coordinate
+        y_position = int(height * (100 - subtitle_y) / 100)
+    else:
+        y_position = {
+            "top": int(height * 0.18),
+            "middle": int(height * 0.52),
+            "bottom": int(height * 0.78),
+        }.get(position, int(height * 0.78))
     highlighted = {word.strip().lower() for word in highlight_words if word.strip()}
     word_duration = max(duration / max(len(words), 1), 0.1)
     ass_path = output_dir / f"captions_{uuid.uuid4().hex[:12]}.ass"
+    margin = int(width * 0.06)
 
     header = f"""[Script Info]
 ScriptType: v4.00+
@@ -272,7 +278,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,64,{_ass_color("#FFFFFF")},&H000000FF,&H00000000,&H99000000,1,0,0,0,100,100,0,0,1,2,0,5,60,60,60,1
+Style: Default,Arial,64,{_ass_color("#FFFFFF")},&H000000FF,&H00000000,&H99000000,1,0,0,0,100,100,0,0,1,2,0,5,{margin},{margin},{margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
