@@ -16,29 +16,13 @@ if [[ "${1:-}" == "--clean" ]]; then
 fi
 
 # ── 1. llama.cpp server ──────────────────────────────────────────
+# llama-server is managed on-demand by the worker (transcriber.py).
+# It's stopped before whisperx transcription and restarted after.
+# First AI analysis call will start it if not already running.
 if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
     echo "  ✅ llama-server already running on :8080"
 else
-    echo "  🔄 Starting llama-server..."
-    setsid /home/samuel/llama/build/bin/llama-server \
-        -m /mnt/82F4CC78F4CC6FC9/lmodels/gemma-3-4b-it.Q5_K_S.gguf \
-        --host 0.0.0.0 --port 8080 \
-        --fit on --fit-ctx 4096 -c 50000 \
-        --cache-type-k q8_0 --cache-type-v q8_0 -fa on \
-        > "$SCRIPT_DIR/llama-server.log" 2>&1 < /dev/null &
-    echo "     (╰┈➤ waiting for model to load)"
-    sleep 3
-    for i in $(seq 1 30); do
-        if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
-            echo "  ✅ llama-server ready"
-            break
-        fi
-        sleep 2
-    done
-    if ! curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
-        echo "  ❌ llama-server failed to start — check llama-server.log"
-        exit 1
-    fi
+    echo "  ⏸️  llama-server will be loaded on demand by the worker when needed"
 fi
 
 # ── 2. Redis ──────────────────────────────────────────────────────

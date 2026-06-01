@@ -4,6 +4,7 @@ Video service - handles video processing business logic.
 
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable, Awaitable
+import asyncio
 import logging
 import json
 import subprocess
@@ -117,7 +118,20 @@ class VideoService:
         """
         Analyze transcript with AI to find relevant segments.
         This is already async, no need to wrap.
+
+        Ensures llama-server is running (started on-demand if whisperx skipped it).
         """
+        # Start llama-server if not already running (whisperx may have skipped it via cache hit)
+        try:
+            import urllib.request
+            urllib.request.urlopen("http://localhost:8080/v1/models", timeout=3)
+        except Exception:
+            from ..transcriber import _start_llama_server
+            logger.info("llama-server not running — starting on demand before AI analysis")
+            started = await asyncio.to_thread(_start_llama_server)
+            if not started:
+                logger.error("Failed to start llama-server for AI analysis")
+
         logger.info("Starting AI analysis of transcript")
         relevant_parts = await get_most_relevant_parts_by_transcript(
             transcript,
