@@ -221,6 +221,25 @@ def create_app(
                 "error": str(e),
             }
 
+    @app.get("/caption-templates")
+    async def get_caption_templates():
+        from .caption_templates import get_template_info
+        try:
+            templates = get_template_info()
+            return {"templates": templates}
+        except Exception as e:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/broll/status")
+    async def broll_status():
+        from .config import get_config
+        cfg = get_config()
+        return {
+            "configured": bool(cfg.pexels_api_key),
+            "provider": "pexels" if cfg.pexels_api_key else None,
+        }
+
     return app
 
 
