@@ -6,6 +6,7 @@ Optimized for free yt-dlp downloads with optional Apify fallback.
 import asyncio
 from datetime import datetime
 import logging
+import os
 import re
 import subprocess
 import time
@@ -44,16 +45,19 @@ class YouTubeDownloader:
 
         opts = {
             "outtmpl": str(output_path),
-            # Single pre-merged stream at max 720p — avoids separate video+audio download + merge
+            # Single pre-merged stream at max 1080p — avoids separate video+audio download + merge
             "format": "best[height<=1080]",
             "merge_output_format": "mp4",
             "writesubtitles": False,
             "writeautomaticsub": False,
             "noplaylist": True,
             "overwrites": True,
+            # JavaScript runtime for YouTube challenge solving (needed for 1080p+)
+            "js_runtimes": ["deno:/home/samuel/.deno/bin/deno"],
+            "remote_components": "ejs:github",
             # Optimized for speed and reliability
             "socket_timeout": 30,
-            "retries": 5,  # Increased retries
+            "retries": 5,
             "fragment_retries": 5,
             "http_chunk_size": 10485760,  # 10MB chunks
             # Quiet operation - only errors/warnings

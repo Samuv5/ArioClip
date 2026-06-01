@@ -48,3 +48,5 @@ PRs should include:
 ## Security & Configuration Tips
 - Never commit real secrets; use `.env.example` as the template.
 - Required runtime keys include `ASSEMBLY_AI_API_KEY` and either one hosted LLM provider key (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, or `ANTHROPIC_API_KEY`) or an Ollama model configuration (`LLM=ollama:*`, optional `OLLAMA_BASE_URL`).
+- yt-dlp must be kept updated (`pip3 install -U yt-dlp --break-system-packages`) — YouTube breaks old versions frequently.
+- deno runtime is required at `~/.deno/bin/deno` for yt-dlp YouTube challenge solving (needed for 1080p downloads).
