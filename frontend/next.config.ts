@@ -2,11 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  // Skip ESLint during builds (generated Prisma code causes lint errors)
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Skip TypeScript errors during builds for now
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -19,6 +17,10 @@ const nextConfig: NextConfig = {
       {
         source: "/api/events",
         destination: "https://datafa.st/api/events",
+      },
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:8000/:path*",
       },
     ];
   },
