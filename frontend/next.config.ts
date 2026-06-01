@@ -19,8 +19,8 @@ const nextConfig: NextConfig = {
         destination: "https://datafa.st/api/events",
       },
       {
-        source: "/api/:path*",
-        destination: "http://localhost:8000/:path*",
+        source: "/api/fonts/:path*",
+        destination: "http://localhost:8000/fonts/:path*",
       },
     ];
   },
