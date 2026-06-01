@@ -32,7 +32,7 @@ from .font_registry import FONTS_DIR, find_font_path, get_font_family_name
 
 logger = logging.getLogger(__name__)
 TRANSCRIPT_CACHE_SCHEMA_VERSION = 2
-VALID_OUTPUT_FORMATS = {"vertical", "vertical_pan", "vertical_split", "original"}
+VALID_OUTPUT_FORMATS = {"vertical", "vertical_pan", "vertical_split", "vertical_blur", "original"}
 CLIP_END_SENTENCE_EXTENSION_SECONDS = 3.0
 CLIP_END_PADDING_SECONDS = 0.35
 SENTENCE_END_RE = re.compile(r"""[.!?]["')\]}]*$""")
@@ -1508,6 +1508,50 @@ def render_reframed_clip_ffmpeg(
             "[lv][rv]vstack,setsar=1[v]"
         )
         video_filter = _append_subtitles(base_filter)
+        command = [
+            "ffmpeg",
+            "-y",
+            "-hwaccel",
+            "cuda",
+            "-i",
+            str(input_path),
+            "-filter_complex",
+            video_filter,
+            "-map",
+            "[v]",
+            "-map",
+            "0:a?",
+            "-c:v",
+            "hevc_nvenc",
+            "-preset",
+            "p4",
+            "-rc:v",
+            "vbr",
+            "-cq",
+            "20",
+            "-b:v",
+            "0",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-movflags",
+            "+faststart",
+            str(output_path),
+        ]
+        return run_ffmpeg_command(command).returncode == 0, 1080, 1920
+    elif output_format == "vertical_blur":
+        # Split into background (blurred + scaled to fill) and foreground (scaled to fit)
+        video_filter = (
+            "[0:v]split=2[bg][fg];"
+            "[bg]scale=1080:1920:force_original_aspect_ratio=increase,"
+            "crop=1080:1920,boxblur=20:5[blurred];"
+            "[fg]scale=1080:-2:force_original_aspect_ratio=decrease[scaled];"
+            "[blurred][scaled]overlay=(W-w)/2:(H-h)/2[v]"
+        )
+        video_filter = _append_subtitles(video_filter)
         command = [
             "ffmpeg",
             "-y",
