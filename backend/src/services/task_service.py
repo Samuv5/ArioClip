@@ -4,6 +4,7 @@ Task service - orchestrates task creation and processing workflow.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, Optional, Callable
+import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -260,38 +261,33 @@ class TaskService:
             clip_ids = []
             render_start = perf_counter()
 
-            for i, segment in enumerate(segments_to_render):
-                # Check cancellation
-                if should_cancel and await should_cancel():
-                    raise Exception("Task cancelled")
+            sem = asyncio.Semaphore(2)
 
-                # Update progress: 70-95% spread across clips
-                clip_progress = 70 + int(
-                    ((i + 1) / total_clips) * 25
-                ) if total_clips > 0 else 95
-                await update_progress(
-                    clip_progress,
-                    f"Creating clip {i + 1}/{total_clips}...",
-                )
+            async def _render_one(i: int, segment: dict) -> dict | None:
+                async with sem:
+                    return await self.video_service.create_single_clip(
+                        video_path, segment, i, clips_output_dir,
+                        font_family, font_size, font_color,
+                        caption_template, output_format,
+                        add_subtitles, normalized_cleanup_settings,
+                    )
 
-                # Render single clip in thread pool
-                clip_info = await self.video_service.create_single_clip(
-                    video_path,
-                    segment,
-                    i,
-                    clips_output_dir,
-                    font_family,
-                    font_size,
-                    font_color,
-                    caption_template,
-                    output_format,
-                    add_subtitles,
-                    normalized_cleanup_settings,
-                )
+            await update_progress(70, f"Rendering {total_clips} clips (2 at a time)...")
+            clip_results = await asyncio.gather(
+                *[_render_one(i, s) for i, s in enumerate(segments_to_render)],
+                return_exceptions=True,
+            )
+
+            for i, clip_info in enumerate(clip_results):
+                if isinstance(clip_info, Exception):
+                    logger.error(f"Clip {i+1} render failed: {clip_info}")
+                    continue
                 if clip_info is None:
-                    continue  # Skip failed clip
+                    continue
 
-                # Save to DB immediately
+                clip_progress = 70 + int(((i + 1) / total_clips) * 25) if total_clips > 0 else 95
+                await update_progress(clip_progress, f"Saving clip {i+1}/{total_clips}...")
+
                 clip_id = await self.clip_repo.create_clip(
                     self.db,
                     task_id=task_id,
@@ -314,14 +310,10 @@ class TaskService:
                 await self.db.commit()
                 clip_ids.append(clip_id)
 
-                # Update task's clip IDs array
                 await self.task_repo.update_task_clips(self.db, task_id, clip_ids)
 
-                # Notify frontend via SSE
                 if clip_ready_callback:
-                    clip_record = await self.clip_repo.get_clip_by_id(
-                        self.db, clip_id
-                    )
+                    clip_record = await self.clip_repo.get_clip_by_id(self.db, clip_id)
                     if clip_record:
                         await clip_ready_callback(i, total_clips, clip_record)
 
