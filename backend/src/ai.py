@@ -21,7 +21,7 @@ from .runtime_settings import apply_settings_to_process_env
 
 logger = logging.getLogger(__name__)
 
-MAX_TRANSCRIPT_CHARS = 400000
+MAX_TRANSCRIPT_CHARS = 1_000_000
 
 IDEAL_CLIP_MIN_SECONDS = 75
 IDEAL_CLIP_MAX_SECONDS = 105
