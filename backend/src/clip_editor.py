@@ -89,11 +89,15 @@ def _double_bitrate(value: str) -> str:
 def _encode_args(audio_bitrate: str = "256k") -> list[str]:
     return [
         "-c:v",
-        "libx264",
+        "h264_nvenc",
         "-preset",
-        "slow",
-        "-crf",
+        "p6",
+        "-rc:v",
+        "vbr",
+        "-cq",
         "18",
+        "-b:v",
+        "0",
         "-pix_fmt",
         "yuv420p",
         "-profile:v",
@@ -151,6 +155,8 @@ def trim_clip_file(
         [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-ss",
             f"{start:.3f}",
             "-i",
@@ -177,6 +183,8 @@ def split_clip_file(
         [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-i",
             str(input_path),
             "-t",
@@ -189,6 +197,8 @@ def split_clip_file(
         [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-ss",
             f"{split_at:.3f}",
             "-i",
@@ -222,6 +232,8 @@ def merge_clip_files(paths: Iterable[Path], output_dir: Path) -> Path:
             [
                 "ffmpeg",
                 "-y",
+                "-hwaccel",
+                "cuda",
                 "-f",
                 "concat",
                 "-safe",
@@ -250,7 +262,7 @@ def overlay_custom_captions(
     output_path = output_dir / _safe_name("caption")
     words = [word for word in caption_text.split() if word.strip()]
     if not words:
-        _run(["ffmpeg", "-y", "-i", str(input_path), *_encode_args(), str(output_path)])
+        _run(["ffmpeg", "-y", "-hwaccel", "cuda", "-i", str(input_path), *_encode_args(), str(output_path)])
         return output_path
 
     width, height = _ffprobe_size(input_path)
@@ -304,6 +316,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             [
                 "ffmpeg",
                 "-y",
+                "-hwaccel",
+                "cuda",
                 "-i",
                 str(input_path),
                 "-vf",
@@ -334,16 +348,22 @@ def export_with_preset(input_path: Path, output_dir: Path, preset_name: str) -> 
     command = [
         "ffmpeg",
         "-y",
+        "-hwaccel",
+        "cuda",
         "-i",
         str(input_path),
         "-vf",
         scale_filter,
         "-c:v",
-        "libx264",
+        "h264_nvenc",
         "-preset",
-        "slow",
-        "-crf",
+        "p6",
+        "-rc",
+        "vbr",
+        "-cq",
         "18",
+        "-b:v",
+        preset.video_bitrate,
         "-maxrate",
         preset.video_bitrate,
         "-bufsize",

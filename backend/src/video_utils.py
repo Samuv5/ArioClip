@@ -63,13 +63,17 @@ class VideoProcessor:
         """Get optimal encoding settings for different quality levels."""
         settings = {
             "high": {
-                "codec": "libx264",
+                "codec": "h264_nvenc",
                 "audio_codec": "aac",
                 "audio_bitrate": "256k",
-                "preset": "slow",
+                "preset": "p6",
                 "ffmpeg_params": [
-                    "-crf",
+                    "-rc:v",
+                    "vbr",
+                    "-cq",
                     "18",
+                    "-b:v",
+                    "0",
                     "-pix_fmt",
                     "yuv420p",
                     "-profile:v",
@@ -81,11 +85,20 @@ class VideoProcessor:
                 ],
             },
             "medium": {
-                "codec": "libx264",
+                "codec": "h264_nvenc",
                 "audio_codec": "aac",
                 "audio_bitrate": "192k",
-                "preset": "fast",
-                "ffmpeg_params": ["-crf", "23", "-pix_fmt", "yuv420p"],
+                "preset": "p4",
+                "ffmpeg_params": [
+                    "-rc:v",
+                    "vbr",
+                    "-cq",
+                    "23",
+                    "-b:v",
+                    "0",
+                    "-pix_fmt",
+                    "yuv420p",
+                ],
             },
         }
         return settings.get(target_quality, settings["high"])
@@ -745,6 +758,8 @@ def render_source_ranges_ffmpeg(
         command = [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-ss",
             f"{start:.3f}",
             "-i",
@@ -752,11 +767,15 @@ def render_source_ranges_ffmpeg(
             "-t",
             f"{end - start:.3f}",
             "-c:v",
-            "libx264",
+            "h264_nvenc",
             "-preset",
-            "veryfast",
-            "-crf",
+            "p2",
+            "-rc:v",
+            "vbr",
+            "-cq",
             "18",
+            "-b:v",
+            "0",
             "-pix_fmt",
             "yuv420p",
             "-c:a",
@@ -797,17 +816,23 @@ def render_source_ranges_ffmpeg(
     command = [
         "ffmpeg",
         "-y",
+        "-hwaccel",
+        "cuda",
         "-i",
         str(video_path),
         "-filter_complex",
         ";".join(filter_parts),
         *map_args,
         "-c:v",
-        "libx264",
+        "h264_nvenc",
         "-preset",
-        "veryfast",
-        "-crf",
+        "p2",
+        "-rc:v",
+        "vbr",
+        "-cq",
         "18",
+        "-b:v",
+        "0",
         "-pix_fmt",
         "yuv420p",
     ]
@@ -1436,8 +1461,11 @@ def render_reframed_clip_ffmpeg(
     input_path: Path,
     output_path: Path,
     output_format: str,
+    ass_path: Optional[Path] = None,
+    ass_fonts_dir: Optional[Path] = None,
 ) -> Tuple[bool, int, int]:
-    """Render the requested aspect/framing mode and return final dimensions."""
+    """Render the requested aspect/framing mode and return final dimensions.
+    If ass_path is given, subtitles are burned in the same pass."""
     width, height = ffprobe_video_size(input_path)
     if output_format == "original":
         shutil.copyfile(input_path, output_path)
@@ -1450,15 +1478,30 @@ def render_reframed_clip_ffmpeg(
     )
     if not plan and output_format == "vertical":
         plan = detect_auto_center_plan(input_path)
+
+    def _append_subtitles(filt: str) -> str:
+        if not ass_path:
+            return filt
+        sub_filter = f"subtitles=filename={ffmpeg_escape_filter_path(ass_path)}"
+        if ass_fonts_dir:
+            sub_filter += f":fontsdir={ffmpeg_escape_filter_value(str(ass_fonts_dir))}"
+        if filt.startswith("["):
+            # filter_complex ending with [v] — remove [v], add sub_filter, re-add [v]
+            if filt.rstrip().endswith("[v]"):
+                filt = filt.rstrip()[:-3]
+            return filt + "," + sub_filter + ",setsar=1[v]"
+        return f"{filt.rstrip(',setsar=1')},{sub_filter},setsar=1"
+
     if plan and "x_expression" in plan:
         video_filter = (
             f"crop={plan['crop_w']}:{plan['crop_h']}:x='{plan['x_expression']}':y=0,"
             "scale=1080:1920:flags=lanczos,setsar=1"
         )
+        video_filter = _append_subtitles(video_filter)
     elif plan and plan["mode"] == "split":
         left = plan["regions"]["left"]
         right = plan["regions"]["right"]
-        video_filter = (
+        base_filter = (
             f"[0:v]split=2[l][r];"
             f"[l]crop={left['tile_w']}:{left['tile_h']}:{left['tile_x']}:{left['tile_y']},"
             f"scale=1080:960:flags=lanczos,setsar=1[lv];"
@@ -1466,9 +1509,12 @@ def render_reframed_clip_ffmpeg(
             f"scale=1080:960:flags=lanczos,setsar=1[rv];"
             "[lv][rv]vstack,setsar=1[v]"
         )
+        video_filter = _append_subtitles(base_filter)
         command = [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-i",
             str(input_path),
             "-filter_complex",
@@ -1478,11 +1524,15 @@ def render_reframed_clip_ffmpeg(
             "-map",
             "0:a?",
             "-c:v",
-            "libx264",
+            "h264_nvenc",
             "-preset",
-            "fast",
-            "-crf",
+            "p4",
+            "-rc:v",
+            "vbr",
+            "-cq",
             "20",
+            "-b:v",
+            "0",
             "-pix_fmt",
             "yuv420p",
             "-c:a",
@@ -1500,16 +1550,22 @@ def render_reframed_clip_ffmpeg(
     command = [
         "ffmpeg",
         "-y",
+        "-hwaccel",
+        "cuda",
         "-i",
         str(input_path),
         "-vf",
         video_filter,
         "-c:v",
-        "libx264",
+        "h264_nvenc",
         "-preset",
-        "fast",
-        "-crf",
+        "p4",
+        "-rc:v",
+        "vbr",
+        "-cq",
         "20",
+        "-b:v",
+        "0",
         "-pix_fmt",
         "yuv420p",
         "-c:a",
@@ -1537,16 +1593,22 @@ def burn_ass_subtitles_ffmpeg(
     command = [
         "ffmpeg",
         "-y",
+        "-hwaccel",
+        "cuda",
         "-i",
         str(input_path),
         "-vf",
         video_filter,
         "-c:v",
-        "libx264",
+        "h264_nvenc",
         "-preset",
-        "fast",
-        "-crf",
+        "p4",
+        "-rc:v",
+        "vbr",
+        "-cq",
         "20",
+        "-b:v",
+        "0",
         "-pix_fmt",
         "yuv420p",
         "-c:a",
@@ -2061,7 +2123,6 @@ def create_optimized_clip(
             temp_root = Path(temp_dir)
             source_clip_path = temp_root / "source.mp4"
             framed_clip_path = temp_root / "framed.mp4"
-            subtitled_clip_path = temp_root / "subtitled.mp4"
             ass_path = temp_root / "captions.ass"
 
             if not render_source_ranges_ffmpeg(
@@ -2074,39 +2135,35 @@ def create_optimized_clip(
             reframe_format = (
                 output_format if output_format in VALID_OUTPUT_FORMATS else "vertical"
             )
-            framed_ok, target_width, target_height = render_reframed_clip_ffmpeg(
-                source_clip_path,
-                framed_clip_path,
-                reframe_format,
-            )
-            if not framed_ok:
-                raise RuntimeError("ffmpeg reframe render failed")
+            ass_fonts_path = ass_fonts_dir(
+                font_family or get_template(caption_template)["font_family"]
+            ) if add_subtitles else None
 
-            if add_subtitles and build_transcript_ass_subtitles(
+            ass_path_actual = ass_path if add_subtitles and build_transcript_ass_subtitles(
                 video_path,
                 start_time,
                 end_time,
-                target_width,
-                target_height,
+                1080,
+                1920,
                 ass_path,
                 font_family,
                 font_size,
                 font_color,
                 caption_template,
                 effective_keep_ranges,
-            ):
-                if not burn_ass_subtitles_ffmpeg(
-                    framed_clip_path,
-                    ass_path,
-                    subtitled_clip_path,
-                    ass_fonts_dir(
-                        font_family or get_template(caption_template)["font_family"]
-                    ),
-                ):
-                    raise RuntimeError("ffmpeg subtitle burn failed")
-                shutil.move(str(subtitled_clip_path), str(output_path))
-            else:
-                shutil.move(str(framed_clip_path), str(output_path))
+            ) else None
+
+            framed_ok, target_width, target_height = render_reframed_clip_ffmpeg(
+                source_clip_path,
+                framed_clip_path,
+                reframe_format,
+                ass_path=ass_path_actual,
+                ass_fonts_dir=ass_fonts_path,
+            )
+            if not framed_ok:
+                raise RuntimeError("ffmpeg reframe render failed")
+
+            shutil.move(str(framed_clip_path), str(output_path))
 
             logger.info(f"Successfully created clip with ffmpeg: {output_path}")
             return True
@@ -2294,6 +2351,8 @@ def apply_transition_effect(
         command = [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-i",
             str(clip1_path),
             "-i",
@@ -2305,11 +2364,15 @@ def apply_transition_effect(
             "-map",
             "1:a?",
             "-c:v",
-            "libx264",
+            "h264_nvenc",
             "-preset",
-            "fast",
-            "-crf",
+            "p4",
+            "-rc:v",
+            "vbr",
+            "-cq",
             "20",
+            "-b:v",
+            "0",
             "-pix_fmt",
             "yuv420p",
             "-c:a",
@@ -2482,6 +2545,8 @@ def insert_broll_into_clip(
         command = [
             "ffmpeg",
             "-y",
+            "-hwaccel",
+            "cuda",
             "-i",
             str(main_clip_path),
             "-i",
@@ -2493,11 +2558,15 @@ def insert_broll_into_clip(
             "-map",
             "0:a?",
             "-c:v",
-            "libx264",
+            "h264_nvenc",
             "-preset",
-            "fast",
-            "-crf",
+            "p4",
+            "-rc:v",
+            "vbr",
+            "-cq",
             "20",
+            "-b:v",
+            "0",
             "-pix_fmt",
             "yuv420p",
             "-c:a",
