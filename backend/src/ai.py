@@ -292,7 +292,15 @@ SCORING AND OUTPUT RULES:
 - virality_reasoning and reasoning should cite what is actually present in the chosen span
 - summary and key_topics must also stay grounded in the transcript and should not add outside interpretation
 
-Find 2-5 compelling segments that would work well as standalone clips. Quality over quantity: choose fewer stronger segments over filling a quota. Every selected segment must be accurate, self-contained, have proper time ranges, and score high on virality metrics."""
+Find 2-5 compelling segments that would work well as standalone clips. Quality over quantity: choose fewer stronger segments over filling a quota. Every selected segment must be accurate, self-contained, have proper time ranges, and score high on virality metrics.
+
+COVERAGE RULES:
+1. Scan the ENTIRE video timeline, not just the first half.
+2. Distribute selections across the video: roughly 30% of weight to the first third, 40% to the middle third, 30% to the final third.
+3. At most ONE clip may start in the first 20% of the video — avoid clustering hooks near the start.
+4. No two clips may overlap or re-use the same transcript lines. Each segment must cover a distinct, non-overlapping time range.
+5. If the best moment in an already-covered zone is only slightly better than a decent moment in an uncovered zone, prefer the uncovered zone.
+6. When in doubt, push selections toward later parts of the video to avoid front-loading."""
 
 # Lazy-loaded agent to avoid import-time failures when API keys aren't set
 _transcript_agent: Optional[Agent[None, TranscriptAnalysis]] = None
