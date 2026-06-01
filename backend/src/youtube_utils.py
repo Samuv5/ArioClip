@@ -44,9 +44,8 @@ class YouTubeDownloader:
 
         opts = {
             "outtmpl": str(output_path),
-            # Use best available video/audio to avoid quality caps from container constraints.
-            "format": "bestvideo*+bestaudio/best",
-            "format_sort": ["res", "fps"],
+            # Single pre-merged stream at max 720p — avoids separate video+audio download + merge
+            "format": "best[height<=720]",
             "merge_output_format": "mp4",
             "writesubtitles": False,
             "writeautomaticsub": False,
