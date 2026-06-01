@@ -21,7 +21,7 @@ from .runtime_settings import apply_settings_to_process_env
 
 logger = logging.getLogger(__name__)
 
-MAX_TRANSCRIPT_CHARS = 200000
+MAX_TRANSCRIPT_CHARS = 1_000_000
 
 IDEAL_CLIP_MIN_SECONDS = 75
 IDEAL_CLIP_MAX_SECONDS = 105
@@ -642,32 +642,51 @@ async def get_most_relevant_parts_by_transcript(
             f"Transcript too long ({len(transcript)} chars), truncating to {MAX_TRANSCRIPT_CHARS}"
         )
         lines = transcript.splitlines()
-        budget = MAX_TRANSCRIPT_CHARS - len("\n[...truncated...]\n")
-        take_first = int(len(lines) * 0.5)
-        first_portion = "\n".join(lines[:take_first])
-        remaining_budget = budget - len(first_portion) - len("\n[...truncated...]\n")
-        if remaining_budget > 0:
-            last_lines = []
-            count = 0
-            for line in reversed(lines[take_first:]):
-                needed = len(line) + 1
-                if count + needed > remaining_budget:
-                    break
-                last_lines.insert(0, line)
-                count += needed
-            transcript = first_portion + "\n[...truncated...]\n" + "\n".join(last_lines)
-        else:
-            first_lines = []
-            count = 0
-            for line in lines:
-                needed = len(line) + 1
-                if count + needed > budget:
-                    break
-                first_lines.append(line)
-                count += needed
-            transcript = "\n".join(first_lines)
+        n = len(lines)
+        gap = "[...]"
+
+        portions = [
+            (0, int(n * 0.35)),
+            (int(n * 0.4), int(n * 0.65)),
+            (int(n * 0.7), n),
+        ]
+        parts = []
+        budget_remaining = MAX_TRANSCRIPT_CHARS
+        markers = []
+        for start, end in portions:
+            if budget_remaining <= len(gap):
+                break
+            chunk = "\n".join(lines[start:end])
+            overhead = len(gap) + 1 if parts else 0
+            if len(chunk) + overhead <= budget_remaining:
+                if parts:
+                    parts.append(gap)
+                    budget_remaining -= len(gap) + 1
+                parts.append(chunk)
+                budget_remaining -= len(chunk)
+                markers.append(f"{start/n*100:.0f}%-{end/n*100:.0f}%")
+            else:
+                # Fit what we can of this chunk
+                take_chars = budget_remaining - overhead
+                if take_chars > 100:
+                    chunk_lines = lines[start:end]
+                    partial = []
+                    c = 0
+                    for line in chunk_lines:
+                        needed = len(line) + 1
+                        if c + needed > take_chars:
+                            break
+                        partial.append(line)
+                        c += needed
+                    if parts:
+                        parts.append(gap)
+                    parts.append("\n".join(partial))
+                    markers.append(f"{start/n*100:.0f}%-partial")
+                break
+        transcript = "\n".join(parts)
         logger.info(
-            f"Truncated transcript to {len(transcript)} chars ({len(transcript.splitlines())} lines)"
+            f"Truncated transcript to {len(transcript)} chars ({len(transcript.splitlines())} lines, "
+            f"sampled {markers})"
         )
 
     logger.info(
