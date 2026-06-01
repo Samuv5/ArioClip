@@ -45,7 +45,7 @@ class YouTubeDownloader:
         opts = {
             "outtmpl": str(output_path),
             # Single pre-merged stream at max 720p — avoids separate video+audio download + merge
-            "format": "best[height<=720]",
+            "format": "best[height<=1080]",
             "merge_output_format": "mp4",
             "writesubtitles": False,
             "writeautomaticsub": False,
