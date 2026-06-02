@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArioClip — AI-Powered Video Clipping Tool</title>
+  <meta name="description" content="ArioClip is an open-source AI video clipping tool. Transform long-form content into viral short clips. Self-hosted, AGPL-3.0.">
+  <meta property="og:title" content="ArioClip — AI Video Clipping">
+  <meta property="og:description" content="Open-source AI video clipper. Self-host your own OpusClip alternative.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/Samuv5/ArioClip/main/assets/social-preview.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --bg: #0a0a14;
+      --surface: #12122a;
+      --surface2: #1a1a34;
+      --accent: #e94560;
+      --accent2: #ff6b6b;
+      --text: #e8e8f0;
+      --text2: #9090b0;
+      --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero {
+      min-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 40%, rgba(233,69,96,0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(255,107,107,0.05) 0%, transparent 50%);
+      z-index: 0;
+    }
+    .hero > * { position: relative; z-index: 1; }
+
+    .logo {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 0%, #e94560 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--text2);
+      max-width: 600px;
+      margin: 20px auto 36px;
+    }
+    .hero .pill {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      background: rgba(233,69,96,0.12);
+      color: var(--accent2);
+      margin-bottom: 16px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(233,69,96,0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 32px rgba(233,69,96,0.4);
+    }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.06);
+      transform: translateY(-2px);
+    }
+
+    /* Sections */
+    section { padding: 80px 0; }
+    section h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    section > p {
+      text-align: center;
+      color: var(--text2);
+      max-width: 500px;
+      margin: 0 auto 48px;
+    }
+
+    /* Features grid */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(233,69,96,0.3);
+      transform: translateY(-2px);
+    }
+    .feature-card .icon { font-size: 1.5rem; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.85rem; color: var(--text2); line-height: 1.5; }
+
+    /* Pipeline */
+    .pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin: 0 auto;
+      max-width: 700px;
+    }
+    .pipe-step {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .pipe-arrow {
+      color: var(--accent);
+      font-size: 1.2rem;
+      font-weight: 300;
+    }
+    .pipe-label {
+      width: 100%;
+      text-align: center;
+      color: var(--text2);
+      font-size: 0.8rem;
+      margin-top: 20px;
+    }
+
+    /* Tech stack */
+    .tech-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .tech-badge {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      color: var(--text2);
+    }
+
+    /* CTA */
+    .cta-section {
+      text-align: center;
+      padding: 80px 24px;
+    }
+    .cta-section h2 { font-size: 2rem; }
+    .cta-section p { margin-bottom: 32px; }
+
+    /* Commands */
+    .commands {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .cmd {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cmd code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: var(--accent2);
+    }
+    .cmd span {
+      font-size: 0.8rem;
+      color: var(--text2);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text2);
+      font-size: 0.8rem;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .features { grid-template-columns: 1fr; }
+      .pipeline { flex-direction: column; }
+      .pipe-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <header class="hero">
+    <svg class="logo" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1a1a2e"/>
+          <stop offset="100%" stop-color="#0f3460"/>
+        </linearGradient>
+        <linearGradient id="accent3" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e94560"/>
+          <stop offset="100%" stop-color="#ff6b6b"/>
+        </linearGradient>
+      </defs>
+      <circle cx="200" cy="200" r="190" fill="url(#bg2)"/>
+      <rect x="100" y="95" width="200" height="140" rx="8" fill="#e94560" opacity="0.9"/>
+      <rect x="100" y="95" width="200" height="30" rx="8" fill="#c0392b" opacity="0.9"/>
+      <rect x="100" y="118" width="200" height="7" fill="#c0392b"/>
+      <rect x="115" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+      <rect x="150" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+      <rect x="185" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+      <rect x="220" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+      <rect x="255" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+      <polygon points="100,140 120,140 120,200 100,200" fill="#2d2d44"/>
+      <polygon points="120,140 300,140 300,200 120,200" fill="#1a1a2e" stroke="#e94560" stroke-width="1.5"/>
+      <polygon points="175,155 175,195 225,175" fill="url(#accent3)"/>
+      <text x="200" y="285" font-family="system-ui, sans-serif" font-size="36" font-weight="800" fill="#ffffff" text-anchor="middle">ArioClip</text>
+    </svg>
+    <span class="pill">Open Source · AGPL-3.0</span>
+    <h1>ArioClip</h1>
+    <p>AI-powered video clipping tool. Drop a YouTube link — AI finds viral moments, generates vertical clips with face-tracking, and syncs captions.</p>
+    <div class="btn-group">
+      <a href="https://github.com/Samuv5/ArioClip" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#quickstart" class="btn btn-secondary">Quickstart</a>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section>
+    <div class="container">
+      <h2>Features</h2>
+      <p>Everything you need to turn long videos into platform-ready shorts.</p>
+      <div class="features">
+        <div class="feature-card">
+          <div class="icon">🎯</div>
+          <h3>AI Segment Selection</h3>
+          <p>Pydantic AI analyzes transcripts to pick 3–7 viral moments with virality scoring.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🎭</div>
+          <h3>Face-Aware Cropping</h3>
+          <p>MediaPipe → OpenCV DNN → Haar cascade fallback chain keeps faces centered.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📝</div>
+          <h3>Word-Synced Subtitles</h3>
+          <p>AssemblyAI word timestamps rendered as styled, animated captions.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h3>Virality Scoring</h3>
+          <p>Each clip scored on hook, engagement, value & shareability (0–100).</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🎨</div>
+          <h3>Caption Templates</h3>
+          <p>Customizable animated templates with multiple styles to match your brand.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🎬</div>
+          <h3>Transition Effects</h3>
+          <p>Optional intro/outro effects between clips for a polished finish.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🖼️</div>
+          <h3>B-Roll Overlays</h3>
+          <p>Pexels integration for stock footage overlays to enhance visual appeal.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📤</div>
+          <h3>YouTube Upload</h3>
+          <p>Multi-channel OAuth upload directly from the app to your YouTube channels.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⚡</div>
+          <h3>Real-Time Progress</h3>
+          <p>SSE stream from worker to frontend — see every step as it happens.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pipeline -->
+  <section style="padding-top:0">
+    <div class="container">
+      <h2>Processing Pipeline</h2>
+      <p>From raw video to finished shorts in minutes.</p>
+      <div class="pipeline">
+        <span class="pipe-step">📹 Input</span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-step">🤖 AI Analysis</span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-step">🎬 Render</span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-step">📱 Export</span>
+        <span class="pipe-label">YouTube URL or upload · AssemblyAI transcription · Pydantic AI selection · MoviePy rendering</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section style="padding-top:0">
+    <div class="container">
+      <h2>Built With</h2>
+      <div class="tech-list">
+        <span class="tech-badge">Python 3.11+</span>
+        <span class="tech-badge">FastAPI</span>
+        <span class="tech-badge">Next.js 15</span>
+        <span class="tech-badge">React 19</span>
+        <span class="tech-badge">PostgreSQL</span>
+        <span class="tech-badge">Redis</span>
+        <span class="tech-badge">MoviePy</span>
+        <span class="tech-badge">AssemblyAI</span>
+        <span class="tech-badge">llama.cpp</span>
+        <span class="tech-badge">ffmpeg</span>
+        <span class="tech-badge">TailwindCSS</span>
+        <span class="tech-badge">ShadCN UI</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quickstart -->
+  <section id="quickstart" style="padding-top:0">
+    <div class="container">
+      <h2>Quickstart</h2>
+      <p>Get up and running in minutes.</p>
+      <div class="commands">
+        <div class="cmd">
+          <code>git clone https://github.com/Samuv5/ArioClip.git</code>
+          <span>Clone the repo</span>
+        </div>
+        <div class="cmd">
+          <code>cp .env.example .env</code>
+          <span>Configure API keys</span>
+        </div>
+        <div class="cmd">
+          <code>./install.sh</code>
+          <span>Install dependencies</span>
+        </div>
+        <div class="cmd">
+          <code>docker compose up -d --build</code>
+          <span>Or use Docker</span>
+        </div>
+        <div class="cmd">
+          <code>./start-local.sh</code>
+          <span>Start all services</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>Start Clipping</h2>
+      <p>Self-host your own AI video clipping pipeline. No subscriptions, no limits.</p>
+      <a href="https://github.com/Samuv5/ArioClip" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>
+        <a href="https://github.com/Samuv5/ArioClip">ArioClip</a> —
+        Fork of <a href="https://github.com/FujiwaraChoki/supoclip">SupoClip</a> by FujiwaraChoki.
+        AGPL-3.0 licensed.
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

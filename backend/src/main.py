@@ -47,8 +47,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SupoClip API",
-    description="Python-based backend for SupoClip",
+    title="ArioClip API",
+    description="Python-based backend for ArioClip — AI-powered video clipping",
     version="0.1.0",
     lifespan=lifespan,
 )

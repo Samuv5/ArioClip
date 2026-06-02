@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 
 MAX_TRANSCRIPT_CHARS = 1_000_000
 
-IDEAL_CLIP_MIN_SECONDS = 75
-IDEAL_CLIP_MAX_SECONDS = 105
+IDEAL_CLIP_MIN_SECONDS = 90
+IDEAL_CLIP_MAX_SECONDS = 150
 MIN_ACCEPTED_CLIP_SECONDS = 60
-MAX_ACCEPTED_CLIP_SECONDS = 120
-TRANSCRIPT_ANALYSIS_CACHE_VERSION = "longer-clips-v3-duration-repair"
+MAX_ACCEPTED_CLIP_SECONDS = 180
+TRANSCRIPT_ANALYSIS_CACHE_VERSION = "longer-clips-v4"
 TRANSCRIPT_SPAN_RE = re.compile(
     r"^\[(?P<start>\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*"
     r"(?P<end>\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?P<text>.*)$"
@@ -182,7 +182,7 @@ OUTPUT CONTRACT:
 - Each item in "most_relevant_segments" must include: "start_time", "end_time", "text", "relevance_score", "reasoning", and "virality".
 - Do not use "segment" as an output field. Use "text".
 - "virality" must include: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", and "virality_reasoning".
-- Every returned segment must be 60-120 seconds long. Prefer 75-105 seconds.
+- Every returned segment must be 60-180 seconds long. Prefer 90-150 seconds.
 
 CORE OBJECTIVES:
 1. Identify segments that would be compelling on social media platforms
@@ -266,12 +266,12 @@ Identify 2-4 moments in each segment where B-roll footage could enhance the vide
 - Use simple, searchable keywords (e.g., "coffee shop", "laptop coding", "money stack")
 
 TIMING GUIDELINES:
-- Target 75-105 seconds for most clips
-- Use 60-74 seconds only when the moment is exceptionally dense, self-contained, and complete
+- Target 90-150 seconds for most clips
+- Use 60-89 seconds only when the moment is exceptionally dense, self-contained, and complete
 - CRITICAL: start_time MUST be different from end_time (minimum 60 seconds apart)
 - Focus on natural content boundaries rather than arbitrary time limits
 - Include enough context for the segment to be understandable
-- Prefer roughly 60-105 seconds when possible
+- Prefer roughly 90-150 seconds when possible
 - Start at the hook or the minimum setup needed to make the hook land, and end after the payoff
 - If a highlight is only one good line, expand to include the surrounding setup and payoff rather than returning a tiny fragment
 - Stop expanding when the topic drifts, the speaker repeats the same point, or the clip loses momentum
@@ -281,7 +281,7 @@ TIMESTAMP REQUIREMENTS - EXTREMELY IMPORTANT:
 - Never modify timestamp format (keep MM:SS structure)
 - start_time MUST be LESS THAN end_time (start_time < end_time)
 - MINIMUM segment duration: 60 seconds (end_time - start_time >= 60 seconds)
-- IDEAL segment duration: 75-105 seconds
+- IDEAL segment duration: 90-150 seconds
 - Look at transcript ranges like [02:25 - 02:35] and use different start/end times
 - NEVER use the same timestamp for both start_time and end_time
 - Example: start_time: "02:25", end_time: "02:35" (NOT "02:25" and "02:25")
@@ -462,9 +462,9 @@ Follow this workflow:
 
 Selection target:
 - Choose 2-5 segments total.
-- Most selected clips should be 75-105 seconds.
-- Only choose a 60-74 second clip when it already contains a full setup and payoff.
-- If a strong moment is shorter than 75 seconds, first try expanding to nearby contiguous transcript lines that add useful context.
+- Most selected clips should be 90-150 seconds.
+- Only choose a 60-89 second clip when it already contains a full setup and payoff.
+- If a strong moment is shorter than 90 seconds, first try expanding to nearby contiguous transcript lines that add useful context.
 - Skip weak standalone picks: intros, sponsor reads, CTAs, contextless quotes, repeated points, vague setup, and answer fragments that require prior context.
 - Before returning a segment, ask whether a viewer would understand and care without seeing the rest of the source video.
 

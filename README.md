@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Samuv5/ArioClip/main/assets/banner.png">
-  <img src="assets/banner.png" alt="ArioClip Banner" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Samuv5/ArioClip/main/assets/social-preview.svg">
+  <img src="assets/social-preview.svg" alt="ArioClip Banner" width="100%">
 </picture>
 
 <div align="center">

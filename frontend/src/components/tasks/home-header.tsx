@@ -48,12 +48,12 @@ export function HomeHeader({ billingSummary, isAdmin }: HomeHeaderProps) {
           <div className="flex items-center gap-3">
             <Image
               src="/logo.png"
-              alt="SupoClip"
+              alt="ArioClip"
               width={24}
               height={24}
               className="rounded-lg"
             />
-            <h1 className="text-xl font-bold text-foreground">SupoClip</h1>
+            <h1 className="text-xl font-bold text-foreground">ArioClip</h1>
           </div>
 
           {/* Desktop nav */}

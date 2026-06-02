@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="50%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e94560"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <linearGradient id="play" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e94560"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="190" fill="url(#bg)" stroke="url(#accent)" stroke-width="2"/>
+
+  <!-- Clapperboard top -->
+  <rect x="100" y="95" width="200" height="140" rx="8" fill="#e94560" opacity="0.9"/>
+  <rect x="100" y="95" width="200" height="30" rx="8" fill="#c0392b" opacity="0.9"/>
+  <rect x="100" y="118" width="200" height="7" fill="#c0392b"/>
+
+  <!-- Clapperboard stripes -->
+  <rect x="115" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+  <rect x="150" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+  <rect x="185" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+  <rect x="220" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+  <rect x="255" y="100" width="20" height="17" rx="2" fill="#ffeaa7"/>
+
+  <!-- Clapperboard bottom (open part) -->
+  <polygon points="100,140 120,140 120,200 100,200" fill="#2d2d44"/>
+  <polygon points="120,140 300,140 300,200 120,200" fill="#1a1a2e" stroke="#e94560" stroke-width="1.5"/>
+
+  <!-- Play button inside clapperboard -->
+  <polygon points="175,155 175,195 225,175" fill="url(#play)" filter="url(#glow)"/>
+
+  <!-- "A" letter mark top-right -->
+  <text x="280" y="80" font-family="system-ui, sans-serif" font-size="55" font-weight="800" fill="#ff6b6b" text-anchor="middle" opacity="0.15">A</text>
+
+  <!-- Sparkle dots -->
+  <circle cx="310" cy="130" r="3" fill="#ffeaa7" opacity="0.8"/>
+  <circle cx="325" cy="150" r="2" fill="#ffeaa7" opacity="0.6"/>
+  <circle cx="315" cy="170" r="1.5" fill="#ffeaa7" opacity="0.4"/>
+
+  <!-- Film perforations -->
+  <circle cx="105" cy="160" r="4" fill="#ffeaa7" opacity="0.3"/>
+  <circle cx="105" cy="180" r="4" fill="#ffeaa7" opacity="0.3"/>
+  <circle cx="295" cy="160" r="4" fill="#ffeaa7" opacity="0.3"/>
+  <circle cx="295" cy="180" r="4" fill="#ffeaa7" opacity="0.3"/>
+
+  <!-- Text: ArioClip -->
+  <text x="200" y="285" font-family="system-ui, sans-serif" font-size="36" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="1">ArioClip</text>
+
+  <!-- Tagline -->
+  <text x="200" y="315" font-family="system-ui, sans-serif" font-size="12" fill="#a0a0b0" text-anchor="middle" letter-spacing="2">AI VIDEO CLIPPING</text>
+</svg>
