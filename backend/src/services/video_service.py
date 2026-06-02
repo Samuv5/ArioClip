@@ -17,22 +17,57 @@ from ..youtube_utils import (
     async_get_youtube_video_title,
     get_youtube_video_id,
 )
-from ..video_utils import (
+from ..clip_rendering import (
     get_video_transcript,
     create_clips_with_transitions,
     create_optimized_clip,
-    parse_timestamp_to_seconds,
     build_clip_keep_ranges,
     build_keep_ranges_from_source_ranges,
     build_clip_signal_summary,
-    extend_keep_ranges_to_sentence_boundary,
-    seconds_to_mmss,
 )
+from ..subtitle_utils import extend_keep_ranges_to_sentence_boundary
+from ..ffmpeg_utils import parse_timestamp_to_seconds, seconds_to_mmss
 from ..clip_source_map import (
     normalize_source_ranges,
     save_clip_source_ranges,
 )
 from ..ai import get_most_relevant_parts_by_transcript
+
+
+def _format_dl_progress(state: Dict[str, Any]) -> str:
+    """Format download progress state into a user-facing message."""
+    status = state.get("status", "")
+    if status == "finished":
+        return "Processing downloaded video..."
+    if status == "error":
+        return "Download error — retrying..."
+    if status != "downloading":
+        return "Downloading video..."
+    downloaded = state.get("downloaded_bytes", 0)
+    total = state.get("total_bytes", 0) or 0
+    pct = state.get("percent_str", "")
+    speed = state.get("speed_str", "")
+    eta = state.get("eta_str", "")
+    parts = ["Downloading"]
+    if pct:
+        parts.append(f"{pct}")
+    if downloaded and total:
+        parts.append(f"({_fmt_bytes(downloaded)}/{_fmt_bytes(total)})")
+    elif downloaded:
+        parts.append(f"({_fmt_bytes(downloaded)})")
+    if speed:
+        parts.append(f"at {speed}")
+    if eta:
+        parts.append(f"ETA {eta}")
+    return " ".join(parts)
+
+
+def _fmt_bytes(n: int) -> str:
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if abs(n) < 1024.0:
+            return f"{n:.1f}{unit}"
+        n /= 1024.0
+    return f"{n:.1f}TiB"
 from ..config import get_config
 
 logger = logging.getLogger(__name__)
@@ -68,12 +103,16 @@ class VideoService:
         raise ValueError("Only upload:// references are allowed for local video sources")
 
     @staticmethod
-    async def download_video(url: str, task_id: Optional[str] = None) -> Optional[Path]:
+    async def download_video(
+        url: str,
+        task_id: Optional[str] = None,
+        progress_state: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Path]:
         """
         Download a YouTube video asynchronously.
         """
         logger.info(f"Starting video download: {url}")
-        video_path = await async_download_youtube_video(url, 3, task_id)
+        video_path = await async_download_youtube_video(url, 3, task_id, progress_state)
 
         if not video_path:
             logger.error(f"Failed to download video: {url}")
@@ -97,10 +136,12 @@ class VideoService:
 
     @staticmethod
     async def generate_transcript(
-        video_path: Path, processing_mode: str = "balanced"
+        video_path: Path,
+        processing_mode: str = "balanced",
+        progress_callback: Optional[Callable[[int, str, str], Awaitable[None]]] = None,
     ) -> str:
         """
-        Generate transcript from video using AssemblyAI.
+        Generate transcript from video using whisperx.
         Runs in thread pool to avoid blocking.
         """
         logger.info(f"Generating transcript for: {video_path}")
@@ -109,18 +150,32 @@ class VideoService:
         if processing_mode == "fast":
             speech_model = runtime_config.fast_mode_transcript_model
 
+        if progress_callback:
+            await progress_callback(30, "Generating transcript (extracting audio)...", "processing")
+
         transcript = await run_in_thread(get_video_transcript, video_path, speech_model)
         logger.info(f"Transcript generated: {len(transcript)} characters")
+
+        if progress_callback:
+            await progress_callback(35, "Generating transcript (processing segments)...", "processing")
+
         return transcript
 
     @staticmethod
-    async def analyze_transcript(transcript: str, clip_signals: Optional[str] = None) -> Any:
+    async def analyze_transcript(
+        transcript: str,
+        clip_signals: Optional[str] = None,
+        progress_callback: Optional[Callable[[int, str, str], Awaitable[None]]] = None,
+    ) -> Any:
         """
         Analyze transcript with AI to find relevant segments.
         This is already async, no need to wrap.
 
         Ensures llama-server is running (started on-demand if whisperx skipped it).
         """
+        if progress_callback:
+            await progress_callback(50, "Analyzing content with AI (checking AI server)...", "processing")
+
         # Start llama-server if not already running (whisperx may have skipped it via cache hit)
         try:
             import urllib.request
@@ -128,9 +183,14 @@ class VideoService:
         except Exception:
             from ..transcriber import _start_llama_server
             logger.info("llama-server not running — starting on demand before AI analysis")
+            if progress_callback:
+                await progress_callback(50, "Analyzing content with AI (starting AI server)...", "processing")
             started = await asyncio.to_thread(_start_llama_server)
             if not started:
                 logger.error("Failed to start llama-server for AI analysis")
+
+        if progress_callback:
+            await progress_callback(52, "Analyzing content with AI (analyzing transcript)...", "processing")
 
         logger.info("Starting AI analysis of transcript")
         relevant_parts = await get_most_relevant_parts_by_transcript(
@@ -344,9 +404,6 @@ class VideoService:
             if should_cancel and await should_cancel():
                 raise Exception("Task cancelled")
 
-            if progress_callback:
-                await progress_callback(10, "Downloading video...", "processing")
-
             if source_type == "youtube":
                 video_info = await async_get_youtube_video_info(url, task_id=task_id)
                 if video_info:
@@ -358,7 +415,28 @@ class VideoService:
                             f"Maximum allowed duration is {mins} minutes."
                         )
 
-                video_path = await VideoService.download_video(url, task_id=task_id)
+                # Download with real-time progress reporting
+                dl_progress: Dict[str, Any] = {}
+                download_task = asyncio.create_task(
+                    VideoService.download_video(url, task_id=task_id, progress_state=dl_progress)
+                )
+
+                last_dl_msg = ""
+                while not download_task.done():
+                    await asyncio.sleep(0.5)
+                    if should_cancel and await should_cancel():
+                        download_task.cancel()
+                        raise Exception("Task cancelled")
+                    msg = _format_dl_progress(dl_progress)
+                    if msg and msg != last_dl_msg and progress_callback:
+                        last_dl_msg = msg
+                        pct = dl_progress.get("downloaded_bytes", 0)
+                        total = dl_progress.get("total_bytes", 0) or 1
+                        raw = min(pct / total, 1.0) if total > 0 else 0.0
+                        progress_val = 10 + int(raw * 20)  # 10-30
+                        await progress_callback(progress_val, msg, "processing")
+
+                video_path = await download_task
                 if not video_path:
                     raise Exception("Failed to download video")
             else:
@@ -379,23 +457,21 @@ class VideoService:
             if should_cancel and await should_cancel():
                 raise Exception("Task cancelled")
 
-            if progress_callback:
-                await progress_callback(30, "Generating transcript...", "processing")
-
             transcript = cached_transcript
             if not transcript:
                 transcript = await VideoService.generate_transcript(
-                    video_path, processing_mode=processing_mode
+                    video_path, processing_mode=processing_mode, progress_callback=progress_callback
                 )
+            else:
+                if progress_callback:
+                    await progress_callback(30, "Using cached transcript...", "processing")
 
             # Step 3: AI analysis
             if should_cancel and await should_cancel():
                 raise Exception("Task cancelled")
 
             if progress_callback:
-                await progress_callback(
-                    50, "Analyzing content with AI...", "processing"
-                )
+                await progress_callback(50, "", "processing")
 
             relevant_parts = None
             if cached_analysis_json:
@@ -439,6 +515,7 @@ class VideoService:
                 relevant_parts = await VideoService.analyze_transcript(
                     transcript,
                     clip_signals=clip_signals,
+                    progress_callback=progress_callback,
                 )
 
             # Step 4: Create clips

@@ -11,6 +11,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
+import threading
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -27,6 +28,33 @@ YOUTUBE_METADATA_PROVIDER_DATA_API = "youtube_data_api"
 YOUTUBE_DOWNLOAD_PROVIDER_YTDLP = "yt_dlp"
 YOUTUBE_DOWNLOAD_PROVIDER_APIFY = "apify"
 YOUTUBE_DATA_API_URL = "https://www.googleapis.com/youtube/v3/videos"
+
+
+DownloadProgressState = Dict[str, Any]
+
+
+def _make_ytdlp_progress_hook(
+    progress_state: DownloadProgressState,
+    lock: threading.Lock,
+):
+    """Create a progress_hook for yt-dlp that writes download stats to a shared dict."""
+    def hook(d: dict):
+        with lock:
+            progress_state["status"] = d.get("status", "unknown")
+            if d.get("total_bytes"):
+                progress_state["total_bytes"] = d["total_bytes"]
+            elif d.get("total_bytes_estimate"):
+                progress_state["total_bytes"] = d["total_bytes_estimate"]
+            if d.get("downloaded_bytes"):
+                progress_state["downloaded_bytes"] = d["downloaded_bytes"]
+            if d.get("speed"):
+                progress_state["speed"] = d["speed"]
+            if d.get("eta"):
+                progress_state["eta"] = d["eta"]
+            progress_state["percent_str"] = d.get("_percent_str", "").strip()
+            progress_state["speed_str"] = d.get("_speed_str", "").strip()
+            progress_state["eta_str"] = d.get("_eta_str", "").strip()
+    return hook
 
 
 class YouTubeDownloader:
@@ -53,7 +81,7 @@ class YouTubeDownloader:
             "noplaylist": True,
             "overwrites": True,
             # JavaScript runtime for YouTube challenge solving (needed for 1080p+)
-            "js_runtimes": ["deno:/home/samuel/.deno/bin/deno"],
+            "js_runtimes": {"deno": {"cmd": ["/home/samuel/.deno/bin/deno"]}},
             "remote_components": "ejs:github",
             # Optimized for speed and reliability
             "socket_timeout": 30,
@@ -468,6 +496,7 @@ def _download_youtube_video_with_ytdlp(
     url: str,
     max_retries: int = 3,
     task_id: Optional[str] = None,
+    progress_state: Optional[DownloadProgressState] = None,
 ) -> Optional[Path]:
     """
     Download YouTube video with optimized settings and retry logic.
@@ -496,12 +525,19 @@ def _download_youtube_video_with_ytdlp(
         logger.warning(f"Video duration ({duration}s) exceeds recommended limit")
 
     last_error: Optional[str] = None
+    lock = threading.Lock()
 
     for attempt in range(max_retries):
         try:
             logger.info("Download attempt %s/%s", attempt + 1, max_retries)
 
             ydl_opts = downloader.get_optimal_download_options(video_id)
+            if progress_state is not None:
+                with lock:
+                    progress_state["progress_hook_attached"] = True
+                ydl_opts["progress_hooks"] = [
+                    _make_ytdlp_progress_hook(progress_state, lock)
+                ]
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
@@ -570,6 +606,7 @@ def download_youtube_video(
     url: str,
     max_retries: int = 3,
     task_id: Optional[str] = None,
+    progress_state: Optional[DownloadProgressState] = None,
 ) -> Optional[Path]:
     """
     Download YouTube video using the configured provider.
@@ -599,6 +636,7 @@ def download_youtube_video(
                 url,
                 max_retries,
                 task_id,
+                progress_state,
             )
             if downloaded_path:
                 return downloaded_path
@@ -635,9 +673,12 @@ async def async_download_youtube_video(
     url: str,
     max_retries: int = 3,
     task_id: Optional[str] = None,
+    progress_state: Optional[DownloadProgressState] = None,
 ) -> Optional[Path]:
     logger.info(f"Starting async YouTube download: {url}")
-    return await asyncio.to_thread(download_youtube_video, url, max_retries, task_id)
+    return await asyncio.to_thread(
+        download_youtube_video, url, max_retries, task_id, progress_state
+    )
 
 
 def get_video_duration(url: str) -> Optional[int]:

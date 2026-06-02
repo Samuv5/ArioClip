@@ -180,7 +180,7 @@ async def upload_font(
 async def get_available_transitions():
     """Get list of available transition effects."""
     try:
-        from ...video_utils import get_available_transitions
+        from ...ffmpeg_utils import get_available_transitions
 
         transitions = get_available_transitions()
 

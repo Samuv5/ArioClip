@@ -8,14 +8,17 @@ cd "$SCRIPT_DIR"
 echo "=== Starting SupoClip (Local Mode) ==="
 echo ""
 
+# Load env
+if [ -f .env ]; then
+  set -a; source .env; set +a
+fi
+
 # ── 1. llama.cpp server ──────────────────────────────────────────
-# llama-server is managed on-demand by the worker (transcriber.py).
-# It's stopped before whisperx transcription and restarted after.
-# First AI analysis call will start it if not already running.
 if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
     echo "  ✅ llama-server already running on :8080"
 else
-    echo "  ⏸️  llama-server will be loaded on demand by the worker when needed"
+    echo "  ⏸️  llama-server not running — start manually:"
+    echo "     llama-server -m <model> --host 0.0.0.0 --port 8080 -ngl 24"
 fi
 
 # ── 2. Redis ──────────────────────────────────────────────────────
@@ -34,19 +37,20 @@ fi
 
 # ── 4. Backend ───────────────────────────────────────────────────
 echo "  🔄 Starting backend..."
-# kill existing gracefully
-pkill -f "uvicorn src.main_refactored" 2>/dev/null || true
+pkill -f "uvicorn src.main" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/backend"
-setsid .venv/bin/uvicorn src.main_refactored:app --host 0.0.0.0 --port 8000 > "$SCRIPT_DIR/backend.log" 2>&1 < /dev/null &
+nohup .venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000 >> "$SCRIPT_DIR/backend.log" 2>&1 &
+BGPID=$!
+disown $BGPID 2>/dev/null
 for i in $(seq 1 15); do
-    if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8000/ > /dev/null 2>&1; then
         echo "  ✅ Backend ready on :8000"
         break
     fi
     sleep 1
 done
-if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+if ! curl -sf http://localhost:8000/ > /dev/null 2>&1; then
     echo "  ❌ Backend failed to start — check backend.log"
     exit 1
 fi
@@ -56,7 +60,9 @@ echo "  🔄 Starting worker..."
 pkill -f "arq src.workers.tasks.WorkerSettings" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/backend"
-setsid .venv/bin/python -m arq src.workers.tasks.WorkerSettings > "$SCRIPT_DIR/worker.log" 2>&1 < /dev/null &
+nohup .venv/bin/arq src.workers.tasks.WorkerSettings >> "$SCRIPT_DIR/worker.log" 2>&1 &
+WKPID=$!
+disown $WKPID 2>/dev/null
 sleep 3
 if pgrep -f "arq src.workers.tasks.WorkerSettings" > /dev/null 2>&1; then
     echo "  ✅ Worker started"
@@ -66,10 +72,13 @@ fi
 
 # ── 6. Frontend ──────────────────────────────────────────────────
 echo "  🔄 Starting frontend..."
-pkill -f "next dev" 2>/dev/null || true
+pkill -f "next.*3107" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/frontend"
+rm -rf .next
 nohup npm run dev > /tmp/frontend.log 2>&1 &
+FRPID=$!
+disown $FRPID 2>/dev/null
 for i in $(seq 1 20); do
     if curl -sf http://localhost:3107 > /dev/null 2>&1; then
         echo "  ✅ Frontend ready on :3107"
@@ -95,5 +104,5 @@ echo "  Backend   →  http://localhost:8000"
 echo "  API docs  →  http://localhost:8000/docs"
 echo "═══════════════════════════════════════════"
 echo ""
-echo "To stop:  pkill -f 'uvicorn\|arq\|next dev\|llama-server'"
+echo "To stop:  ./stop-local.sh"
 echo "Logs:     $SCRIPT_DIR/*.log  and  /tmp/frontend.log"

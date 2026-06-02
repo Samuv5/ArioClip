@@ -23,7 +23,7 @@ from ...workers.progress import ProgressTracker
 from ...config import get_config
 from ...font_registry import is_font_accessible
 from ...clip_cleanup import normalize_clip_cleanup_settings
-from ...video_utils import VALID_OUTPUT_FORMATS
+from ...ffmpeg_utils import VALID_OUTPUT_FORMATS
 from ...admin_auth import require_admin_user
 import redis.asyncio as redis
 from ...clip_editor import export_with_preset, EXPORT_PRESETS
@@ -837,6 +837,45 @@ async def cancel_task(
     except Exception as e:
         logger.error(f"Error cancelling task: {e}")
         raise HTTPException(status_code=500, detail=f"Error cancelling task: {str(e)}")
+
+
+@router.post("/cancel-all")
+async def cancel_all_tasks(
+    request: Request, db: AsyncSession = Depends(get_db)
+):
+    """Cancel all active (queued or processing) tasks for the current user."""
+    try:
+        user_id = _get_user_id_from_headers(request)
+        task_service = TaskService(db)
+        tasks = await task_service.get_user_tasks(user_id, limit=100)
+
+        runtime_config = get_config()
+        redis_client = redis.Redis(
+            host=runtime_config.redis_host,
+            port=runtime_config.redis_port,
+            password=runtime_config.redis_password,
+            decode_responses=True,
+        )
+        try:
+            cancelled = 0
+            for task in tasks:
+                if task.get("status") in ("queued", "processing"):
+                    tid = task["id"]
+                    await redis_client.setex(f"task_cancel:{tid}", 3600, "1")
+                    await task_service.task_repo.update_task_status(
+                        db, tid, "cancelled",
+                        progress=0, progress_message="Cancelled by user",
+                    )
+                    cancelled += 1
+
+            return {"cancelled": cancelled, "message": f"Cancelled {cancelled} active task(s)"}
+        finally:
+            await redis_client.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error cancelling all tasks: {e}")
+        raise HTTPException(status_code=500, detail=f"Error cancelling all tasks: {str(e)}")
 
 
 @router.get("/metrics/performance")

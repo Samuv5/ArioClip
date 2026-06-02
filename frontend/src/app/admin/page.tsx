@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { AdminUserToggle } from "@/components/admin/admin-user-toggle";
+import { CancelAllButton } from "@/components/admin/cancel-all-button";
 import {
   RuntimeSettingsForm,
   type RuntimeSetting,
@@ -16,8 +17,8 @@ function statusBadgeClass(status: string) {
   if (status === "completed") return "bg-green-100 text-green-800";
   if (status === "processing" || status === "queued" || status === "pending") return "bg-blue-100 text-blue-800";
   if (status === "error" || status === "failed") return "bg-red-100 text-red-800";
-  if (status === "cancelled") return "bg-gray-100 text-gray-700";
-  return "bg-gray-100 text-gray-700";
+  if (status === "cancelled") return "bg-muted text-muted-foreground";
+  return "bg-muted text-muted-foreground";
 }
 
 export default async function AdminPage({
@@ -31,8 +32,8 @@ export default async function AdminPage({
     return (
       <main className="mx-auto max-w-2xl px-6 py-16">
         <h1 className="text-2xl font-semibold">Admin</h1>
-        <p className="mt-3 text-sm text-gray-600">You need to sign in to view this page.</p>
-        <Link href="/sign-in" className="mt-6 inline-block text-sm font-medium text-black underline">
+        <p className="mt-3 text-sm text-muted-foreground">You need to sign in to view this page.</p>
+        <Link href="/sign-in" className="mt-6 inline-block text-sm font-medium text-foreground underline">
           Go to sign in
         </Link>
       </main>
@@ -45,7 +46,7 @@ export default async function AdminPage({
     return (
       <main className="mx-auto max-w-2xl px-6 py-16">
         <h1 className="text-2xl font-semibold">Admin</h1>
-        <p className="mt-3 text-sm text-gray-600">You are signed in, but your account is not an admin.</p>
+        <p className="mt-3 text-sm text-muted-foreground">You are signed in, but your account is not an admin.</p>
       </main>
     );
   }
@@ -194,40 +195,47 @@ export default async function AdminPage({
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-          <p className="mt-2 text-sm text-gray-600">Manage users and monitor overall platform activity.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Manage users and monitor overall platform activity.</p>
         </div>
-        <Link href="/" className="text-sm font-medium text-black underline">
+        <Link href="/" className="text-sm font-medium text-foreground underline">
           Back to app
         </Link>
       </div>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Total users</p>
-          <p className="mt-2 text-2xl font-semibold text-black">{totalUsers}</p>
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total users</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{totalUsers}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Admins</p>
-          <p className="mt-2 text-2xl font-semibold text-black">{adminUsers}</p>
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Admins</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{adminUsers}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Total tasks</p>
-          <p className="mt-2 text-2xl font-semibold text-black">{totalTasks}</p>
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total tasks</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{totalTasks}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Completed tasks</p>
-          <p className="mt-2 text-2xl font-semibold text-black">{completedTasks}</p>
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed tasks</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{completedTasks}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 sm:col-span-2 lg:col-span-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Currently processing</p>
-          <p className="mt-2 text-2xl font-semibold text-black">{activeTasks}</p>
+        <div className="rounded-lg border border-border bg-background p-4 sm:col-span-2 lg:col-span-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Currently processing</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{activeTasks}</p>
+            </div>
+            {activeTasks > 0 && (
+              <CancelAllButton />
+            )}
+          </div>
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="text-lg font-medium">Runtime Settings</h2>
-          <p className="text-sm text-gray-600">Configure provider keys and model settings without editing env files.</p>
+          <p className="text-sm text-muted-foreground">Configure provider keys and model settings without editing env files.</p>
         </div>
         {runtimeSettings.error ? (
           <div className="px-4 py-5 text-sm text-red-700">{runtimeSettings.error}</div>
@@ -236,40 +244,40 @@ export default async function AdminPage({
         )}
       </section>
 
-      <section className="mt-8 rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="text-lg font-medium">Currently Processing Tasks</h2>
-          <p className="text-sm text-gray-600">Live queue across all users.</p>
+          <p className="text-sm text-muted-foreground">Live queue across all users.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Task</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Updated</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Task</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">User</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Updated</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-border bg-background">
               {processingNow.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-4 text-sm text-gray-600" colSpan={4}>No tasks are currently processing.</td>
+                  <td className="px-4 py-4 text-sm text-muted-foreground" colSpan={4}>No tasks are currently processing.</td>
                 </tr>
               ) : (
                 processingNow.map((task) => (
                   <tr key={task.id}>
                     <td className="px-4 py-3">
-                      <Link href={`/tasks/${task.id}`} className="text-sm font-medium text-black underline">
+                      <Link href={`/tasks/${task.id}`} className="text-sm font-medium text-foreground underline">
                         {task.id}
                       </Link>
-                      <p className="text-xs text-gray-600 truncate max-w-[420px]">{task.source?.title || "Untitled source"}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[420px]">{task.source?.title || "Untitled source"}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{task.user.email}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{task.user.email}</td>
                     <td className="px-4 py-3">
                       <Badge className={statusBadgeClass(task.status)}>{task.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{task.updated_at.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{task.updated_at.toLocaleString()}</td>
                   </tr>
                 ))
               )}
@@ -277,37 +285,37 @@ export default async function AdminPage({
           </table>
         </div>
       </section>
-      <section className="mt-8 rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="text-lg font-medium">Recent Generations</h2>
-          <p className="text-sm text-gray-600">Latest task activity across the platform.</p>
+          <p className="text-sm text-muted-foreground">Latest task activity across the platform.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Task</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Clips</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Task</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">User</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Clips</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-border bg-background">
               {recentGenerations.map((task) => (
                 <tr key={task.id}>
                   <td className="px-4 py-3">
-                    <Link href={`/tasks/${task.id}`} className="text-sm font-medium text-black underline">
+                    <Link href={`/tasks/${task.id}`} className="text-sm font-medium text-foreground underline">
                       {task.id}
                     </Link>
-                    <p className="text-xs text-gray-600 truncate max-w-[420px]">{task.source?.title || "Untitled source"}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[420px]">{task.source?.title || "Untitled source"}</p>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{task.user.email}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{task.user.email}</td>
                   <td className="px-4 py-3">
                     <Badge className={statusBadgeClass(task.status)}>{task.status}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{task.generated_clips_ids.length}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{task.created_at.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{task.generated_clips_ids.length}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{task.created_at.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -315,31 +323,31 @@ export default async function AdminPage({
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="text-lg font-medium">Users</h2>
-          <p className="text-sm text-gray-600">Most recent users. Toggle admin access and inspect user tasks.</p>
+          <p className="text-sm text-muted-foreground">Most recent users. Toggle admin access and inspect user tasks.</p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Generations</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Created</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">User</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Generations</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Created</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-border bg-background">
               {recentUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-black">{user.name || "Unnamed user"}</p>
-                    <p className="text-xs text-gray-600">{user.email}</p>
-                    <Link href={`/admin?user=${user.id}`} className="text-xs text-black underline">
+                    <p className="text-sm font-medium text-foreground">{user.name || "Unnamed user"}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <Link href={`/admin?user=${user.id}`} className="text-xs text-foreground underline">
                       View user tasks
                     </Link>
                   </td>
@@ -355,8 +363,8 @@ export default async function AdminPage({
                       <Badge variant="outline">User</Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{generationCountByUser.get(user.id) || 0}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.createdAt.toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{generationCountByUser.get(user.id) || 0}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{user.createdAt.toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-right">
                     <AdminUserToggle
                       userId={user.id}
@@ -371,55 +379,55 @@ export default async function AdminPage({
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-medium">User Task Explorer</h2>
-            <p className="text-sm text-gray-600">Inspect generations for a specific user.</p>
+            <p className="text-sm text-muted-foreground">Inspect generations for a specific user.</p>
           </div>
           {selectedUserId && (
-            <Link href="/admin" className="text-sm font-medium text-black underline">
+            <Link href="/admin" className="text-sm font-medium text-foreground underline">
               Clear filter
             </Link>
           )}
         </div>
 
         {!selectedUser ? (
-          <div className="px-4 py-5 text-sm text-gray-600">Select a user from the table above to view their tasks.</div>
+          <div className="px-4 py-5 text-sm text-muted-foreground">Select a user from the table above to view their tasks.</div>
         ) : (
           <div className="overflow-x-auto">
-            <div className="px-4 py-3 text-sm text-gray-700 border-b border-gray-200">
-              Viewing: <span className="font-medium text-black">{selectedUser.name || selectedUser.email}</span> ({selectedUser.email})
+            <div className="px-4 py-3 text-sm text-muted-foreground border-b border-border">
+              Viewing: <span className="font-medium text-foreground">{selectedUser.name || selectedUser.email}</span> ({selectedUser.email})
             </div>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Task</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Source</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Clips</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Created</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Task</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Clips</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-border bg-background">
                 {selectedUserTasks.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-4 text-sm text-gray-600" colSpan={5}>No tasks found for this user.</td>
+                    <td className="px-4 py-4 text-sm text-muted-foreground" colSpan={5}>No tasks found for this user.</td>
                   </tr>
                 ) : (
                   selectedUserTasks.map((task) => (
                     <tr key={task.id}>
                       <td className="px-4 py-3">
-                        <Link href={`/tasks/${task.id}`} className="text-sm font-medium text-black underline">
+                        <Link href={`/tasks/${task.id}`} className="text-sm font-medium text-foreground underline">
                           {task.id}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{task.source?.title || "Untitled source"}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{task.source?.title || "Untitled source"}</td>
                       <td className="px-4 py-3">
                         <Badge className={statusBadgeClass(task.status)}>{task.status}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{task.generated_clips_ids.length}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{task.created_at.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{task.generated_clips_ids.length}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{task.created_at.toLocaleString()}</td>
                     </tr>
                   ))
                 )}

@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 import json
 import hashlib
+import secrets
+import string
 from time import perf_counter
 
 import redis.asyncio as redis
@@ -30,7 +32,7 @@ from ..clip_editor import (
     merge_clip_files,
     overlay_custom_captions,
 )
-from ..video_utils import VALID_OUTPUT_FORMATS, parse_timestamp_to_seconds
+from ..ffmpeg_utils import VALID_OUTPUT_FORMATS, parse_timestamp_to_seconds
 from ..clip_cleanup import normalize_clip_cleanup_settings
 from ..ai import TRANSCRIPT_ANALYSIS_CACHE_VERSION
 from ..clip_source_map import (
@@ -44,6 +46,11 @@ from ..clip_source_map import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_error_code() -> str:
+    """Generate a short unique error code for user-facing error reference."""
+    return "E-" + "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
 
 
 class TaskService:
@@ -368,8 +375,10 @@ class TaskService:
                     progress_message="Cancelled by user",
                 )
                 raise
+            error_code_id = _generate_error_code()
             await self.task_repo.update_task_status(
-                self.db, task_id, "error", progress_message=str(e)
+                self.db, task_id, "error",
+                progress_message=f"[{error_code_id}] {str(e)}",
             )
             error_code = "task_error"
             message = str(e).lower()
@@ -386,7 +395,7 @@ class TaskService:
                 self.db,
                 task_id,
                 completed_at=datetime.utcnow(),
-                error_code=error_code,
+                error_code=f"{error_code_id}:{error_code}",
             )
             raise
 

@@ -18,6 +18,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { formatSupportMessage, parseApiError } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -563,7 +564,7 @@ export default function TaskEditPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white p-4">
+      <div className="min-h-screen bg-background p-4">
         <div className="max-w-7xl mx-auto space-y-4">
           <Skeleton className="h-10 w-56" />
           <Skeleton className="h-[420px] w-full" />
@@ -577,8 +578,8 @@ export default function TaskEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b bg-white">
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border bg-background">
         <div className="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -590,8 +591,9 @@ export default function TaskEditPage() {
               </Link>
               <Badge variant="outline">Studio Editor</Badge>
             </div>
-            <h1 className="text-2xl font-bold text-black">{task?.source_title || "Clip Editor"}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{task?.source_title || "Clip Editor"}</h1>
           </div>
+          <ThemeToggle />
           <Button onClick={handleExport} disabled={!selectedClip || isSaving}>
             <Download className="w-4 h-4" />
             {exportProgress !== null ? `Exporting ${exportProgress}%` : "Export Selected"}
@@ -614,7 +616,7 @@ export default function TaskEditPage() {
           <Card>
             <CardContent className="p-8 text-center space-y-3">
               <p className="text-lg font-semibold">This editor is available once processing completes.</p>
-              <p className="text-gray-600">Current status: {task.status}</p>
+              <p className="text-muted-foreground">Current status: {task.status}</p>
               <Link href={`/tasks/${task.id}`}>
                 <Button variant="outline">Return to Task</Button>
               </Link>
@@ -673,7 +675,7 @@ export default function TaskEditPage() {
                       </div>
 
                       <div className="border rounded-lg p-3 space-y-3">
-                        <div className="flex items-center justify-between text-sm text-gray-600">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
                           <span>Playhead: {formatDuration(currentTime)} / {formatDuration(selectedClip.duration)}</span>
                           <span>{isPlaying ? "Playing" : "Paused"}</span>
                         </div>
@@ -695,7 +697,7 @@ export default function TaskEditPage() {
                       </div>
 
                       <div className="border rounded-lg p-3 space-y-3">
-                        <div className="flex items-center justify-between text-sm text-gray-700">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
                           <span className="font-medium">Trim Range</span>
                           <span>{formatDuration(trimRange[0])} - {formatDuration(trimRange[1])}</span>
                         </div>
@@ -717,7 +719,7 @@ export default function TaskEditPage() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm text-gray-600">Select a clip to start editing.</p>
+                    <p className="text-sm text-muted-foreground">Select a clip to start editing.</p>
                   )}
                 </CardContent>
               </Card>
@@ -752,14 +754,14 @@ export default function TaskEditPage() {
                     <div className="space-y-3">
                       <div className="text-sm font-medium flex items-center gap-2"><AudioLines className="w-4 h-4" />Audio</div>
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs text-gray-600">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <span>Volume</span>
                           <span>{volume}%</span>
                         </div>
                         <Slider min={0} max={200} step={1} value={[volume]} onValueChange={(v) => setVolume(v[0] || 0)} />
                       </div>
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs text-gray-600">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <span>Playback Rate</span>
                           <span>{playbackRate.toFixed(2)}x</span>
                         </div>
@@ -785,7 +787,7 @@ export default function TaskEditPage() {
                         const currentValue = videoFx[typedKey];
                         return (
                           <div key={key} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs text-gray-600">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
                               <span>{label}</span>
                               <span>{currentValue}</span>
                             </div>
@@ -820,7 +822,7 @@ export default function TaskEditPage() {
                       value={captionText}
                       onChange={(e) => setCaptionText(e.target.value)}
                       placeholder="Edit subtitle script"
-                      className="w-full min-h-24 rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full min-h-24 rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground"
                     />
 
                     <div className="grid grid-cols-2 gap-2">
@@ -848,7 +850,7 @@ export default function TaskEditPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-gray-600">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>Subtitle Size</span>
                         <span>{subtitleSize}</span>
                       </div>
@@ -856,7 +858,7 @@ export default function TaskEditPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-gray-600">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>Vertical Offset</span>
                         <span>{subtitleY}%</span>
                       </div>
@@ -864,10 +866,10 @@ export default function TaskEditPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-xs text-gray-600">Highlight words (click to toggle)</div>
-                      <div className="max-h-28 overflow-y-auto rounded-md border border-gray-200 p-2 flex flex-wrap gap-1.5">
+                      <div className="text-xs text-muted-foreground">Highlight words (click to toggle)</div>
+                      <div className="max-h-28 overflow-y-auto rounded-md border border-border p-2 flex flex-wrap gap-1.5">
                         {subtitleWords.length === 0 ? (
-                          <span className="text-xs text-gray-500">No words yet.</span>
+                          <span className="text-xs text-muted-foreground">No words yet.</span>
                         ) : (
                           subtitleWords.map((word, index) => {
                             const cleaned = word.toLowerCase().replace(/[^a-z0-9']/g, "");
@@ -878,7 +880,7 @@ export default function TaskEditPage() {
                                 type="button"
                                 onClick={() => toggleHighlightedWord(word)}
                                 className={`px-1.5 py-0.5 rounded text-xs border ${
-                                  highlighted ? "bg-yellow-100 border-yellow-300 text-yellow-900" : "bg-white border-gray-200 text-gray-700"
+                                  highlighted ? "bg-yellow-100 border-yellow-300 text-yellow-900" : "bg-background border-border text-muted-foreground"
                                 }`}
                               >
                                 {word}
@@ -922,16 +924,16 @@ export default function TaskEditPage() {
                         type="button"
                         onClick={() => setSelectedClipId(clip.id)}
                         className={`text-left rounded-lg border p-3 transition ${
-                          isActive ? "border-black bg-gray-50" : "border-gray-200 hover:border-gray-400"
+                          isActive ? "border-foreground bg-muted" : "border-border hover:border-border"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="font-medium text-sm text-black">Clip {clip.clip_order}</p>
-                            <p className="text-xs text-gray-500">{clip.start_time} - {clip.end_time}</p>
-                            <p className="text-xs text-gray-500">{formatDuration(clip.duration)}</p>
+                            <p className="font-medium text-sm text-foreground">Clip {clip.clip_order}</p>
+                            <p className="text-xs text-muted-foreground">{clip.start_time} - {clip.end_time}</p>
+                            <p className="text-xs text-muted-foreground">{formatDuration(clip.duration)}</p>
                           </div>
-                          <label className="flex items-center gap-1 text-xs text-gray-600" onClick={(e) => e.stopPropagation()}>
+                          <label className="flex items-center gap-1 text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
                             <input type="checkbox" checked={isSelectedForMerge} onChange={() => toggleMergeSelection(clip.id)} />
                             Merge
                           </label>

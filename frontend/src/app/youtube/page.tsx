@@ -146,25 +146,29 @@ export default function YouTubeUploadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-semibold flex items-center gap-2">
-              <Youtube className="w-6 h-6 text-red-500" />
-              YouTube Upload
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Authenticate channels and upload your clips
-            </p>
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border bg-background">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon" className="shrink-0">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-semibold flex items-center gap-2">
+                <Youtube className="w-6 h-6 text-red-500" />
+                YouTube Upload
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Authenticate channels and upload your clips
+              </p>
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="space-y-6">
           {/* ── Auth Section ── */}
           <Card>
@@ -190,8 +194,8 @@ export default function YouTubeUploadPage() {
               </div>
 
               {authUrl && (
-                <div className="bg-stone-50 rounded-lg p-4 space-y-3 border">
-                  <p className="text-sm text-stone-700">{authInstructions}</p>
+                <div className="bg-muted rounded-lg p-4 space-y-3 border">
+                  <p className="text-sm text-muted-foreground">{authInstructions}</p>
                   <a
                     href={authUrl}
                     target="_blank"
@@ -314,7 +318,7 @@ export default function YouTubeUploadPage() {
                 <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-sm font-medium">Target channels</label>
                   {channels.length === 0 ? (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Authenticate a channel first in the section above.
                     </p>
                   ) : (
@@ -325,7 +329,7 @@ export default function YouTubeUploadPage() {
                           className={`cursor-pointer rounded-full px-3 py-1.5 text-sm border transition-colors ${
                             selectedChannels.includes(ch)
                               ? "bg-red-600 text-white border-red-600"
-                              : "bg-stone-100 hover:bg-stone-200"
+                              : "bg-muted hover:bg-muted"
                           }`}
                         >
                           <input
