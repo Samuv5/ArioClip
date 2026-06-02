@@ -54,6 +54,14 @@ export interface CaptionTemplateOption {
   name: string;
   description: string;
   animation: string;
+  animation_speed?: number;
+  position?: string;
+  background?: boolean;
+  shadow?: boolean;
+  letter_spacing?: number;
+  uppercase?: boolean;
+  stroke_color?: string;
+  stroke_width?: number;
 }
 
 export type ExportPreset = "original" | "tiktok" | "reels" | "shorts";

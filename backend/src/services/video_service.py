@@ -229,8 +229,6 @@ class VideoService:
         from ..transcriber import _stop_llama_server, _start_llama_server
         logger.info("Stopping llama-server to free GPU for ffmpeg CUDA rendering")
         await asyncio.to_thread(_stop_llama_server)
-        if progress_callback:
-            await progress_callback(80, "Rendering clips (freeing GPU for CUDA)...", "processing")
 
         try:
             clips_info = await run_in_thread(

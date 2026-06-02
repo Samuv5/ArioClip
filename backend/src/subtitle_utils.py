@@ -268,6 +268,41 @@ def extend_keep_ranges_to_sentence_boundary(
     return [*normalized[:-1], (last_start, extended_end)]
 
 
+def _animation_speed_ms(speed: float, base_ms: int) -> int:
+    return max(50, int(base_ms / max(0.1, speed)))
+
+
+def _resolve_position(
+    template: dict,
+    video_height: int,
+    subtitle_y: Optional[int] = None,
+) -> int:
+    from .caption_templates import POSITION_Y_MAP
+    position_name = template.get("position", "bottom")
+    pos_y = float(template.get("position_y", 0.75))
+    if position_name in POSITION_Y_MAP and subtitle_y is None:
+        pos_y = POSITION_Y_MAP[position_name]
+    if subtitle_y is not None:
+        return int(video_height * (100 - subtitle_y) / 100)
+    return int(video_height * pos_y)
+
+
+CHUNK_SIZES: dict[str, int] = {
+    "none": 4,
+    "fade": 4,
+    "pop": 3,
+    "karaoke": 3,
+    "slide_up": 5,
+    "slide_down": 5,
+    "slide_left": 5,
+    "slide_right": 5,
+    "typewriter": 6,
+    "scale_in": 3,
+    "reveal": 4,
+    "bounce": 3,
+}
+
+
 def build_transcript_ass_subtitles(
     video_path: Path,
     clip_start: float,
@@ -301,9 +336,11 @@ def build_transcript_ass_subtitles(
         logger.warning("No words found in clip timerange for ASS subtitles")
         return False
 
-    chunk_size = 4 if animation in {"fade", "none"} else 3
+    chunk_size = CHUNK_SIZES.get(animation, 4)
     if caption_template == "minimal":
         chunk_size = 6
+    if animation in {"typewriter", "bounce"}:
+        chunk_size = max(3, chunk_size)
 
     primary = hex_to_ass_color(effective_font_color)
     highlight = hex_to_ass_color(template.get("highlight_color"), "#FFD700")
@@ -311,15 +348,22 @@ def build_transcript_ass_subtitles(
     back_color = hex_to_ass_color(template.get("background_color"), "#00000080")
     font_px = get_scaled_font_size(effective_font_size, video_width)
     outline_px = int(template.get("stroke_width", 2) or 0)
-    shadow_px = 2 if template.get("shadow") else 0
-    pos_y = float(template.get("position_y", 0.75))
-    if subtitle_y is not None:
-        y_pos = int(video_height * (100 - subtitle_y) / 100)
+    anim_speed = float(template.get("animation_speed", 1.0))
+    uppercase = bool(template.get("uppercase", False))
+
+    stroke_color_hex = template.get("stroke_color") or "#000000"
+    shadow_enabled = template.get("shadow", False)
+    if shadow_enabled:
+        shadow_px = int(template.get("shadow_offset_x", 2))
     else:
-        y_pos = int(video_height * pos_y)
+        shadow_px = 0
+
+    letter_spacing = int(template.get("letter_spacing", 0))
+    y_pos = _resolve_position(template, video_height, subtitle_y)
     margin = int(video_width * 0.06)
     font_name = ass_font_name(effective_font_family)
-    border_style = 3 if template.get("background") and template.get("background_color") else 1
+    bg = template.get("background") and template.get("background_color")
+    border_style = 3 if bg else 1
 
     header = f"""[Script Info]
 ScriptType: v4.00+
@@ -330,36 +374,189 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_name},{font_px},{primary},&H000000FF,{outline},{back_color},1,0,0,0,100,100,0,0,{border_style},{outline_px},{shadow_px},5,{margin},{margin},{margin},1
+Style: Default,{font_name},{font_px},{primary},&H000000FF,{outline},{back_color},1,0,0,0,100,100,{letter_spacing},0,{border_style},{outline_px},{shadow_px},5,{margin},{margin},{margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
     events: List[str] = []
-    base_prefix = f"{{\\pos({video_width // 2},{y_pos})}}"
+    cx = video_width // 2
+
+    def _word_text(w: dict) -> str:
+        t = escape_ass_text(w["text"])
+        return t.upper() if uppercase else t
+
     for chunk_start in range(0, len(relevant_words), chunk_size):
         chunk = relevant_words[chunk_start : chunk_start + chunk_size]
-        chunk_end = chunk[-1]["end"]
-        chunk_text = " ".join(escape_ass_text(word["text"]) for word in chunk)
+        chunk_end = float(chunk[-1]["end"])
+        chunk_text = " ".join(_word_text(w) for w in chunk)
+        base_prefix = f"{{\\pos({cx},{y_pos})}}"
 
+        # --- karaoke (word-by-word highlight) ---
         if animation == "karaoke":
             for idx, word in enumerate(chunk):
-                start = float(word["start"])
-                end = float(chunk[idx + 1]["start"]) if idx + 1 < len(chunk) else chunk_end
-                if end <= start:
-                    end = start + 0.05
+                w_start = float(word["start"])
+                w_end = float(chunk[idx + 1]["start"]) if idx + 1 < len(chunk) else chunk_end
+                if w_end <= w_start:
+                    w_end = w_start + 0.05
                 parts = []
-                for part_idx, part_word in enumerate(chunk):
-                    text = escape_ass_text(part_word["text"])
-                    if part_idx == idx:
-                        parts.append(f"{{\\c{highlight}}}{text}{{\\c{primary}}}")
+                for p_idx, p_word in enumerate(chunk):
+                    txt = _word_text(p_word)
+                    if p_idx == idx:
+                        parts.append(f"{{\\c{highlight}}}{txt}{{\\c{primary}}}")
                     else:
-                        parts.append(text)
+                        parts.append(txt)
                 line = " ".join(parts)
                 events.append(
-                    f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{base_prefix}{line}"
+                    f"Dialogue: 0,{ass_timestamp(w_start)},{ass_timestamp(w_end)},Default,,0,0,0,,{base_prefix}{line}"
                 )
+
+        # --- typewriter (word fades in + scale pop) ---
+        elif animation == "typewriter":
+            for idx, word in enumerate(chunk):
+                w_start = float(word["start"])
+                w_end = float(chunk[idx + 1]["start"]) if idx + 1 < len(chunk) else chunk_end
+                if w_end <= w_start:
+                    w_end = w_start + 0.3
+                txt = _word_text(word)
+                fade_ms = _animation_speed_ms(anim_speed, 120)
+                effect = (
+                    f"{{\\pos({cx},{y_pos})}}"
+                    f"{{\\alpha&HFF&\\t(0,{fade_ms},\\alpha&H00&)}}"
+                    f"{{\\fscx130\\fscy130\\t(0,{fade_ms},\\fscx100\\fscy100)}}"
+                )
+                events.append(
+                    f"Dialogue: 0,{ass_timestamp(w_start)},{ass_timestamp(w_end)},Default,,0,0,0,,{effect}{txt}"
+                )
+
+        # --- slide animations ---
+        elif animation == "slide_up":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            from_y = y_pos + int(video_height * 0.04)
+            fade_in = _animation_speed_ms(anim_speed, 120)
+            dur = int((end - start) * 1000)
+            move_dur = min(_animation_speed_ms(anim_speed, 350), int(dur * 0.6))
+            effect = (
+                f"{{\\move({cx},{from_y},{cx},{y_pos},0,{move_dur})}}"
+                f"{{\\fad({fade_in},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{effect}{chunk_text}"
+            )
+
+        elif animation == "slide_down":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            from_y = y_pos - int(video_height * 0.04)
+            fade_in = _animation_speed_ms(anim_speed, 120)
+            dur = int((end - start) * 1000)
+            move_dur = min(_animation_speed_ms(anim_speed, 350), int(dur * 0.6))
+            effect = (
+                f"{{\\move({cx},{from_y},{cx},{y_pos},0,{move_dur})}}"
+                f"{{\\fad({fade_in},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{effect}{chunk_text}"
+            )
+
+        elif animation == "slide_left":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            from_x = video_width + int(video_width * 0.05)
+            move_ms = _animation_speed_ms(anim_speed, 300)
+            fade_in = _animation_speed_ms(anim_speed, 80)
+            effect = (
+                f"{{\\move({from_x},{y_pos},{cx},{y_pos},0,{move_ms})}}"
+                f"{{\\fad({fade_in},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{effect}{chunk_text}"
+            )
+
+        elif animation == "slide_right":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            from_x = -int(video_width * 0.05)
+            move_ms = _animation_speed_ms(anim_speed, 300)
+            fade_in = _animation_speed_ms(anim_speed, 80)
+            effect = (
+                f"{{\\move({from_x},{y_pos},{cx},{y_pos},0,{move_ms})}}"
+                f"{{\\fad({fade_in},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{effect}{chunk_text}"
+            )
+
+        # --- scale_in (zoom from small to normal) ---
+        elif animation == "scale_in":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            grow_ms = _animation_speed_ms(anim_speed, 350)
+            fade_in = _animation_speed_ms(anim_speed, 100)
+            effect = (
+                f"{{\\fscx10\\fscy10\\t(0,{grow_ms},\\fscx105\\fscy105)"
+                f"\\t({grow_ms},{grow_ms + 150},\\fscx100\\fscy100)}}"
+                f"{{\\fad({fade_in},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{base_prefix}{effect}{chunk_text}"
+            )
+
+        # --- reveal (horizontal scale + clip) ---
+        elif animation == "reveal":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            reveal_ms = _animation_speed_ms(anim_speed, 400)
+            clip_w = int(video_width * 0.45)
+            x1 = cx - clip_w
+            x2 = cx + clip_w
+            effect = (
+                f"{{\\clip({cx},{y_pos - 60},{cx},{y_pos + 60})"
+                f"\\t(0,{reveal_ms},\\clip({x1},{y_pos - 60},{x2},{y_pos + 60}))}}"
+                f"{{\\fscx0\\t(0,{reveal_ms},\\fscx100)}}"
+                f"{{\\fad({_animation_speed_ms(anim_speed, 80)},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{base_prefix}{effect}{chunk_text}"
+            )
+
+        # --- bounce (overshoot + settle) ---
+        elif animation == "bounce":
+            start = float(chunk[0]["start"])
+            end = float(chunk_end)
+            if end <= start:
+                end = start + 0.05
+            dur = int((end - start) * 1000)
+            t1 = int(dur * 0.35)
+            t2 = int(dur * 0.6)
+            t3 = int(dur * 0.8)
+            bounce_prefix = (
+                f"{{\\fscx50\\fscy50"
+                f"\\t(0,{t1},\\fscx115\\fscy115)"
+                f"\\t({t1},{t2},\\fscx90\\fscy90)"
+                f"\\t({t2},{t3},\\fscx105\\fscy105)"
+                f"\\t({t3},{dur},\\fscx100\\fscy100)}}"
+                f"{{\\fad({_animation_speed_ms(anim_speed, 80)},0)}}"
+            )
+            events.append(
+                f"Dialogue: 0,{ass_timestamp(start)},{ass_timestamp(end)},Default,,0,0,0,,{base_prefix}{bounce_prefix}{chunk_text}"
+            )
+
+        # --- standard animations (none, fade, pop) ---
         else:
             start = float(chunk[0]["start"])
             end = float(chunk_end)

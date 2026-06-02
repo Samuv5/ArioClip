@@ -624,9 +624,16 @@ export default function Home() {
                       <SelectContent>
                         {availableTemplates.length > 0 ? (
                           availableTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id} className="py-3">
-                              <span className="font-medium">{template.name}</span>
-                              <span className="text-xs text-muted-foreground ml-2">{template.description}</span>
+                            <SelectItem key={template.id} value={template.id} className="py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{template.name}</span>
+                                {template.animation && template.animation !== "none" && (
+                                  <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary uppercase tracking-wider">
+                                    {template.animation.replace(/_/g, " ")}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground block">{template.description}</span>
                             </SelectItem>
                           ))
                         ) : (
