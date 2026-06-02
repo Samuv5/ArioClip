@@ -127,7 +127,7 @@ workers/       → ARQ job definitions
 ### Video Processing Pipeline
 
 1. **Input** → YouTube URL (yt-dlp) or uploaded file
-2. **Transcription** → AssemblyAI word timestamps (cached)
+2. **Transcription** → WhisperX word timestamps (cached)
 3. **AI Analysis** → Pydantic AI selects 3–7 viral segments with virality scoring
 4. **Clip Generation** → MoviePy with face cropping, subtitles, effects
 5. **Storage** → Clips to `{TEMP_DIR}/clips/`, metadata to PostgreSQL
@@ -163,7 +163,7 @@ workers/       → ARQ job definitions
 Required in `.env` (root):
 
 ```bash
-ASSEMBLY_AI_API_KEY=              # Transcription (required)
+ASSEMBLY_AI_API_KEY=              # Optional: cloud transcription (local WhisperX by default)
 LLM=openai:gpt-4o                 # Provider:model format
 OPENAI_API_KEY=...                 # Or GOOGLE_API_KEY / ANTHROPIC_API_KEY / ollama
 DATABASE_URL=postgresql+asyncpg://supoclip:supoclip_password@localhost:5432/supoclip

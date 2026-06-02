@@ -38,7 +38,7 @@
 |---|---|---|
 | 🎯 | **AI Segment Selection** | Pydantic AI analyzes transcripts to pick 3–7 viral moments (10–45s) |
 | 🎭 | **Face-Aware Cropping** | MediaPipe → OpenCV DNN → Haar cascade fallback chain keeps faces centered |
-| 📝 | **Word-Synced Subtitles** | AssemblyAI word timestamps → styled captions with animations |
+| 📝 | **Word-Synced Subtitles** | WhisperX word timestamps → styled captions with animations |
 | 📊 | **Virality Scoring** | Each clip scored on hook, engagement, value & shareability (0–100) |
 | 🎨 | **Caption Templates** | Customizable animated templates with multiple styles |
 | 🎬 | **Transition Effects** | Optional intro/outro effects between clips |
@@ -55,8 +55,8 @@
 
 - Python 3.11+, Node.js 20+, ffmpeg
 - PostgreSQL 15+, Redis 7+
-- [AssemblyAI](https://assemblyai.com) API key (transcription)
 - One AI provider key: OpenAI, Google AI, Anthropic, or [llama.cpp](https://github.com/ggml-org/llama.cpp) with a GGUF model
+- (Optional) [AssemblyAI](https://assemblyai.com) API key for cloud transcription
 - (Optional) [Pexels](https://pexels.com) API key for B-roll footage
 
 ### 1. Clone & Configure
@@ -122,19 +122,19 @@ User → Frontend (Next.js 15) ──→ Backend API (FastAPI) ──→ Redis Q
 Input (YouTube URL / Upload)
         │
         ▼
-Download (yt-dlp) ────→ AssemblyAI (transcription)
-        │                         │
-        │                         ▼
-        │                  AI Segment Selection
-        │                         │
-        ▼                         ▼
-  Face Detection ←──────── Clip Rendering (MoviePy)
-  (MediaPipe/DNN/Haar)         │
-                               │
-                               ▼
-                      Vertical 9:16 clips +
-                      Word-synced subtitles +
-                      Virality scores
+Download (yt-dlp/upload) ────→ WhisperX (local transcription)
+        │                              │
+        │                              ▼
+        │                       AI Segment Selection
+        │                              │
+        ▼                              ▼
+  Face Detection ←────────── Clip Rendering (MoviePy)
+  (MediaPipe/DNN/Haar)              │
+                                    │
+                                    ▼
+                           Vertical 9:16 clips +
+                           Word-synced subtitles +
+                           Virality scores
 ```
 
 <br>
@@ -145,11 +145,12 @@ Download (yt-dlp) ────→ AssemblyAI (transcription)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ASSEMBLY_AI_API_KEY` | ✅ | Speech-to-text transcription |
+| `ASSEMBLY_AI_API_KEY` | ✗ | Cloud transcription (alternative to local WhisperX) |
 | `LLM` | ✅ | `openai:gpt-4o`, `google-gla:gemini-2.0-flash`, `anthropic:claude-3-haiku`, `ollama:gemma-3-4b-it` |
 | `OPENAI_API_KEY` | * | One of these LLM provider keys |
 | `GOOGLE_API_KEY` | * | |
 | `ANTHROPIC_API_KEY` | * | |
+| `WHISPERX_MODEL` | ✗ | Local transcription model: `tiny`, `base`, `small`, `medium`, `large` (default: `tiny`) |
 | `DATABASE_URL` | ⚡ | `postgresql+asyncpg://user:pass@localhost:5432/arioclip` |
 | `REDIS_HOST` | ⚡ | Default: `localhost` |
 | `REDIS_PORT` | ⚡ | Default: `6379` |
@@ -158,7 +159,7 @@ Download (yt-dlp) ────→ AssemblyAI (transcription)
 
 ### Hardware Notes
 
-- **GPU (recommended):** Face detection + whisperX benefit greatly from CUDA
+- **GPU (recommended):** Face detection + WhisperX transcription benefit greatly from CUDA
 - **4GB VRAM** works with `llama-server -ngl 24` for Gemma-3-4B-Q5_K_S
 - **CPU-only:** Use a cloud LLM provider (`openai:*`, `google-gla:*`) instead
 
