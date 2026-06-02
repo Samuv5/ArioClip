@@ -27,7 +27,7 @@ IDEAL_CLIP_MIN_SECONDS = 90
 IDEAL_CLIP_MAX_SECONDS = 150
 MIN_ACCEPTED_CLIP_SECONDS = 60
 MAX_ACCEPTED_CLIP_SECONDS = 180
-TRANSCRIPT_ANALYSIS_CACHE_VERSION = "full-timeline-v1"
+TRANSCRIPT_ANALYSIS_CACHE_VERSION = "lanczos-fix-v1"
 TRANSCRIPT_SPAN_RE = re.compile(
     r"^\[(?P<start>\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*"
     r"(?P<end>\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?P<text>.*)$"

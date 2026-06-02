@@ -536,7 +536,9 @@ def render_reframed_clip_ffmpeg(
             if filt.rstrip().endswith("[v]"):
                 filt = filt.rstrip()[:-3]
             return filt + "," + sub_filter + ",setsar=1[v]"
-        return f"{filt.rstrip(',setsar=1')},{sub_filter},setsar=1"
+        if filt.rstrip().endswith(",setsar=1"):
+            filt = filt.rstrip()[:-len(",setsar=1")]
+        return f"{filt},{sub_filter},setsar=1"
 
     if plan and "x_expression" in plan:
         video_filter = (

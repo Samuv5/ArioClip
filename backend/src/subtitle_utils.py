@@ -12,6 +12,7 @@ from .ffmpeg_utils import (
     ffprobe_duration,
     format_ms_to_timestamp,
     get_scaled_font_size,
+    parse_timestamp_to_seconds,
     SENTENCE_END_RE,
     CLIP_END_SENTENCE_EXTENSION_SECONDS,
     CLIP_END_PADDING_SECONDS,
