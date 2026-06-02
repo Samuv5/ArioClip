@@ -163,6 +163,30 @@ Download (yt-dlp/upload) ────→ WhisperX (local transcription)
 - **4GB VRAM** works with `llama-server -ngl 24` for Gemma-3-4B-Q5_K_S
 - **CPU-only:** Use a cloud LLM provider (`openai:*`, `google-gla:*`) instead
 
+### GPU Memory Management (4GB VRAM)
+
+On low-VRAM cards the worker manages GPU memory by **starting `llama-server` on demand** and stopping it during heavy stages:
+
+```
+Download
+   ↓
+Stop llama-server  ← free VRAM
+   ↓
+WhisperX transcription (CUDA)
+   ↓
+Start llama-server ← reload model
+   ↓
+AI analysis (Pydantic AI / llama)
+   ↓
+Stop llama-server  ← free VRAM again
+   ↓
+ffmpeg CUDA rendering (face crop + subtitles)
+   ↓
+Start llama-server (for next task)
+```
+
+The worker auto-stops llama-server before WhisperX and ffmpeg rendering, and restarts it before the next AI analysis. No manual intervention needed.
+
 ### yt-dlp & YouTube
 
 YouTube rate-limits aggressive downloads. Keep yt-dlp updated:

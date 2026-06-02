@@ -184,6 +184,21 @@ BACKEND_AUTH_SECRET=...            # HMAC signing secret
 - GTX 1650 Mobile 4GB: use `-ngl 24` with Gemma-3-4B-Q5_K_S
 - CPU-only: use cloud LLM provider instead of local llama.cpp
 
+## GPU Memory Management
+
+The worker manages VRAM automatically on 4GB cards. The pipeline:
+
+1. **Download** (no GPU)
+2. **Stop llama-server** → free VRAM
+3. **WhisperX transcription** (CUDA)
+4. **Start llama-server** → reload model
+5. **AI analysis** (Pydantic AI / llama)
+6. **Stop llama-server** → free VRAM again
+7. **ffmpeg CUDA rendering** (face crop + subtitles)
+8. **Start llama-server** (for next task)
+
+`_stop_llama_server()` and `_start_llama_server()` live in `backend/src/transcriber.py`.
+
 ## Fork Information
 
 ArioClip is a fork of [SupoClip](https://github.com/FujiwaraChoki/supoclip) by FujiwaraChoki.

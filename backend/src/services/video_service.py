@@ -224,19 +224,34 @@ class VideoService:
         clips_output_dir = Path(get_config().temp_dir) / "clips"
         clips_output_dir.mkdir(parents=True, exist_ok=True)
 
-        clips_info = await run_in_thread(
-            create_clips_with_transitions,
-            video_path,
-            segments,
-            clips_output_dir,
-            font_family,
-            font_size,
-            font_color,
-            caption_template,
-            output_format,
-            add_subtitles,
-            cleanup_settings,
-        )
+        # Free GPU memory: stop llama-server before ffmpeg CUDA rendering
+        # (it will be re-launched on demand before the next AI analysis)
+        from ..transcriber import _stop_llama_server, _start_llama_server
+        logger.info("Stopping llama-server to free GPU for ffmpeg CUDA rendering")
+        await asyncio.to_thread(_stop_llama_server)
+        if progress_callback:
+            await progress_callback(80, "Rendering clips (freeing GPU for CUDA)...", "processing")
+
+        try:
+            clips_info = await run_in_thread(
+                create_clips_with_transitions,
+                video_path,
+                segments,
+                clips_output_dir,
+                font_family,
+                font_size,
+                font_color,
+                caption_template,
+                output_format,
+                add_subtitles,
+                cleanup_settings,
+            )
+        finally:
+            # Restart llama-server so subsequent tasks can find it running
+            logger.info("Restarting llama-server after ffmpeg render")
+            restarted = await asyncio.to_thread(_start_llama_server)
+            if not restarted:
+                logger.critical("Failed to restart llama-server after render!")
 
         logger.info(f"Successfully created {len(clips_info)} clips")
         return clips_info

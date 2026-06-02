@@ -13,12 +13,14 @@ if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
-# ── 1. llama.cpp server ──────────────────────────────────────────
+# ── 1. llama.cpp server (managed on-demand by the worker) ───────
+# The worker stops llama-server before WhisperX and ffmpeg rendering
+# to free VRAM, then restarts it before the next AI analysis.
+# No need to start it manually — first AI call will launch it.
 if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
-    echo "  ✅ llama-server already running on :8080"
+    echo "  ✅ llama-server running on :8080"
 else
-    echo "  ⏸️  llama-server not running — start manually:"
-    echo "     llama-server -m <model> --host 0.0.0.0 --port 8080 -ngl 24"
+    echo "  ⏸️  llama-server not running — auto-started on demand by worker"
 fi
 
 # ── 2. Redis ──────────────────────────────────────────────────────
