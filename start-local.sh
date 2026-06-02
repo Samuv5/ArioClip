@@ -62,9 +62,15 @@ echo "  🔄 Starting worker..."
 pkill -f "arq src.workers.tasks.WorkerSettings" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/backend"
-nohup .venv/bin/arq src.workers.tasks.WorkerSettings >> "$SCRIPT_DIR/worker.log" 2>&1 &
-WKPID=$!
-disown $WKPID 2>/dev/null
+python3 -c "
+import signal, subprocess, sys, os
+signal.signal(signal.SIGHUP, signal.SIG_IGN)
+log = open('$SCRIPT_DIR/worker.log', 'a')
+proc = subprocess.Popen(['.venv/bin/arq', 'src.workers.tasks.WorkerSettings'], stdout=log, stderr=subprocess.STDOUT)
+print(f'Worker PID: {proc.pid}')
+sys.stdout.flush()
+" > /dev/null 2>&1 &
+disown
 sleep 3
 if pgrep -f "arq src.workers.tasks.WorkerSettings" > /dev/null 2>&1; then
     echo "  ✅ Worker started"
