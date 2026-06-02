@@ -10,6 +10,7 @@ import re
 
 from .ffmpeg_utils import (
     ffprobe_duration,
+    format_ms_to_timestamp,
     get_scaled_font_size,
     SENTENCE_END_RE,
     CLIP_END_SENTENCE_EXTENSION_SECONDS,
