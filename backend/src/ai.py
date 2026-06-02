@@ -747,8 +747,20 @@ async def get_most_relevant_parts_by_transcript(
         )
 
         # Validation with virality data handling
-        validated_segments = []
+        validated_segments: list[TranscriptSegment] = []
         transcript_spans = _parse_transcript_spans(transcript)
+
+        def _segment_seconds(seg: TranscriptSegment) -> tuple[int, int]:
+            return (
+                _parse_transcript_timestamp_seconds(seg.start_time),
+                _parse_transcript_timestamp_seconds(seg.end_time),
+            )
+
+        def _overlap_ratio(a_start: int, a_end: int, b_start: int, b_end: int) -> float:
+            overlap = max(0, min(a_end, b_end) - max(a_start, b_start))
+            duration = min(a_end - a_start, b_end - b_start)
+            return overlap / duration if duration > 0 else 0.0
+
         for segment in analysis.most_relevant_segments:
             # Validate text content
             if not segment.text.strip() or len(segment.text.split()) < 3:
@@ -834,7 +846,35 @@ async def get_most_relevant_parts_by_transcript(
                 )
                 continue
 
+        # Deduplicate overlapping segments: keep higher-virality one
+        deduped: list[TranscriptSegment] = []
+        for seg in validated_segments:
+            s_start, s_end = _segment_seconds(seg)
+            overlapping = [
+                d for d in deduped
+                if _overlap_ratio(s_start, s_end, *_segment_seconds(d)) > 0.4
+            ]
+            if not overlapping:
+                deduped.append(seg)
+            else:
+                existing = overlapping[0]
+                e_score = existing.virality.total_score if existing.virality else 0
+                s_score = seg.virality.total_score if seg.virality else 0
+                if s_score > e_score:
+                    deduped.remove(existing)
+                    deduped.append(seg)
+                    logger.info(
+                        f"Replaced overlapping segment {existing.start_time}-{existing.end_time} "
+                        f"(score {e_score}) with {seg.start_time}-{seg.end_time} (score {s_score})"
+                    )
+                else:
+                    logger.info(
+                        f"Dropped overlapping segment {seg.start_time}-{seg.end_time} "
+                        f"(already covered by {existing.start_time}-{existing.end_time})"
+                    )
+
         # Sort by virality score (primary) then relevance (secondary)
+        validated_segments = deduped
         validated_segments.sort(
             key=lambda x: (
                 x.virality.total_score if x.virality else 0,
