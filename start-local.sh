@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "=== Starting SupoClip (Local Mode) ==="
+echo "=== Starting ArioClip (Local Mode) ==="
 echo ""
 
 # Load env

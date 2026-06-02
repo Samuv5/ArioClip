@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stop all SupoClip local services
-echo "=== Stopping SupoClip (Local Mode) ==="
+echo "=== Stopping ArioClip (Local Mode) ==="
 
 pkill -f "uvicorn src.main" 2>/dev/null && echo "  ✅ Backend stopped" || echo "  ⚪ Backend not running"
 pkill -f "arq src.workers.tasks.WorkerSettings" 2>/dev/null && echo "  ✅ Worker stopped" || echo "  ⚪ Worker not running"
