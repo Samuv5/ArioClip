@@ -27,7 +27,7 @@ IDEAL_CLIP_MIN_SECONDS = 90
 IDEAL_CLIP_MAX_SECONDS = 150
 MIN_ACCEPTED_CLIP_SECONDS = 60
 MAX_ACCEPTED_CLIP_SECONDS = 180
-TRANSCRIPT_ANALYSIS_CACHE_VERSION = "longer-clips-v4"
+TRANSCRIPT_ANALYSIS_CACHE_VERSION = "full-timeline-v1"
 TRANSCRIPT_SPAN_RE = re.compile(
     r"^\[(?P<start>\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*"
     r"(?P<end>\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?P<text>.*)$"
@@ -292,15 +292,7 @@ SCORING AND OUTPUT RULES:
 - virality_reasoning and reasoning should cite what is actually present in the chosen span
 - summary and key_topics must also stay grounded in the transcript and should not add outside interpretation
 
-Find 2-5 compelling segments that would work well as standalone clips. Quality over quantity: choose fewer stronger segments over filling a quota. Every selected segment must be accurate, self-contained, have proper time ranges, and score high on virality metrics.
-
-COVERAGE RULES:
-1. Scan the ENTIRE video timeline, not just the first half.
-2. Distribute selections across the video: roughly 30% of weight to the first third, 40% to the middle third, 30% to the final third.
-3. At most ONE clip may start in the first 20% of the video — avoid clustering hooks near the start.
-4. No two clips may overlap or re-use the same transcript lines. Each segment must cover a distinct, non-overlapping time range.
-5. If the best moment in an already-covered zone is only slightly better than a decent moment in an uncovered zone, prefer the uncovered zone.
-6. When in doubt, push selections toward later parts of the video to avoid front-loading."""
+Find 2-5 compelling segments that would work well as standalone clips. Quality over quantity: choose fewer stronger segments over filling a quota. Every selected segment must be accurate, self-contained, have proper time ranges, and score high on virality metrics."""
 
 # Lazy-loaded agent to avoid import-time failures when API keys aren't set
 _transcript_agent: Optional[Agent[None, TranscriptAnalysis]] = None
@@ -432,6 +424,28 @@ def get_transcript_agent() -> Agent[None, TranscriptAnalysis]:
     return _transcript_agent
 
 
+def _get_total_transcript_duration_seconds(transcript: str) -> int:
+    last_end = 0
+    for line in transcript.splitlines():
+        m = TRANSCRIPT_SPAN_RE.match(line.strip())
+        if m:
+            try:
+                end_sec = _parse_transcript_timestamp_seconds(m.group("end"))
+                if end_sec > last_end:
+                    last_end = end_sec
+            except ValueError:
+                continue
+    return last_end
+
+
+def _format_duration(seconds: int) -> str:
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    if h:
+        return f"{h}h {m}m {s}s"
+    return f"{m}m {s}s"
+
+
 def build_transcript_analysis_prompt(
     transcript: str, include_broll: bool = False, clip_signals: str | None = None
 ) -> str:
@@ -447,6 +461,9 @@ def build_transcript_analysis_prompt(
             "Use these as hints only. They should influence ranking, but every final segment "
             "must still be a coherent contiguous transcript range."
         )
+
+    total_seconds = _get_total_transcript_duration_seconds(transcript)
+    total_str = _format_duration(total_seconds)
 
     return f"""Analyze this video transcript and identify the most engaging segments for short-form content.
 
@@ -485,6 +502,18 @@ JSON-only output requirements:
 - Segment keys: "start_time", "end_time", "text", "relevance_score", "reasoning", "virality".
 - Virality keys: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", "virality_reasoning".
 - Do not return segments shorter than {MIN_ACCEPTED_CLIP_SECONDS} seconds or longer than {MAX_ACCEPTED_CLIP_SECONDS} seconds.
+
+--- COVERAGE INSTRUCTIONS (MANDATORY) ---
+Total video duration: {total_str}.
+
+SCAN THE ENTIRE TIMELINE before selecting any clips. Note the last timestamp in the transcript. Do NOT limit your search to the first few minutes.
+
+DISTRIBUTION RULES:
+1. At most ONE clip may start in the first 20% of the video.
+2. You MUST select clips from at least two different thirds of the video.
+3. Spread selections across the timeline. If the best 3 clips happen to all be early, drop the weakest early pick and pick a strong clip from an uncovered later section instead.
+4. No two clips may overlap or share transcript lines.
+5. When in doubt, prefer later parts of the video over earlier ones.
 
 Transcript:
 {transcript}"""
