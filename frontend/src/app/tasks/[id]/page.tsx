@@ -28,6 +28,9 @@ export default function TaskPage() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
+  const [subProgress, setSubProgress] = useState<number | null>(null);
+  const [subMessage, setSubMessage] = useState<string | null>(null);
+  const [progressMetadata, setProgressMetadata] = useState<Record<string, unknown> | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -195,6 +198,9 @@ export default function TaskPage() {
       const data = JSON.parse(e.data);
       setProgress(data.progress || 0);
       setProgressMessage(data.message || "");
+      setSubProgress(data.sub_progress ?? null);
+      setSubMessage(data.sub_message ?? null);
+      setProgressMetadata(data.metadata ?? null);
       if (data.status === "completed") {
         void fetchTaskStatus().then(() => triggerAutoRefresh());
       }
@@ -204,6 +210,9 @@ export default function TaskPage() {
       const data = JSON.parse(e.data);
       setProgress(data.progress || 0);
       setProgressMessage(data.message || "");
+      setSubProgress(data.sub_progress ?? null);
+      setSubMessage(data.sub_message ?? null);
+      setProgressMetadata(data.metadata ?? null);
       if (data.status) {
         setTask((currentTask) => (currentTask ? { ...currentTask, status: data.status } : currentTask));
         if (data.status === "completed") {
@@ -531,6 +540,9 @@ export default function TaskPage() {
             progress={progress}
             progressMessage={progressMessage}
             clips={clips}
+            subProgress={subProgress}
+            subMessage={subMessage}
+            progressMetadata={progressMetadata}
           />
         ) : !task ? (
           <div className="flex flex-col items-center justify-center min-h-[50vh] py-16">

@@ -62,10 +62,13 @@ async def process_video_task(
         try:
             # Progress callback
             async def update_progress(
-                percent: int, message: str, status: str = "processing"
+                percent: int, message: str, status: str = "processing",
+                sub_progress: int | None = None, sub_message: str | None = None,
+                metadata: dict | None = None,
             ):
-                await progress.update(percent, message, status)
-                logger.info(f"Task {task_id}: {percent}% - {message}")
+                await progress.update(percent, message, status, sub_progress, sub_message, metadata)
+                sub = f" [{sub_message}]" if sub_message else ""
+                logger.info(f"Task {task_id}: {percent}% - {message}{sub}")
 
             async def should_cancel() -> bool:
                 cancelled = await ctx["redis"].get(f"task_cancel:{task_id}")

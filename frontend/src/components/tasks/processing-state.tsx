@@ -12,9 +12,15 @@ interface ProcessingStateProps {
   progress: number;
   progressMessage: string;
   clips: Clip[];
+  subProgress?: number | null;
+  subMessage?: string | null;
+  progressMetadata?: Record<string, unknown> | null;
 }
 
-export function ProcessingState({ status, progress, progressMessage, clips }: ProcessingStateProps) {
+export function ProcessingState({ status, progress, progressMessage, clips, subProgress, subMessage, progressMetadata }: ProcessingStateProps) {
+  const elapsed = progressMetadata?.elapsed_seconds as number | undefined;
+  const estimatedTotal = progressMetadata?.estimated_total_seconds as number | undefined;
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col items-center py-8">
@@ -27,19 +33,45 @@ export function ProcessingState({ status, progress, progressMessage, clips }: Pr
           </div>
         </div>
 
-        <p className="text-foreground text-base font-medium tracking-wide mb-6 text-center max-w-lg leading-relaxed">
+        <p className="text-foreground text-base font-medium tracking-wide mb-4 text-center max-w-lg leading-relaxed">
           {progressMessage || (status === "queued" ? "Waiting in queue" : "Processing")}
         </p>
 
+        {subMessage && (
+          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md leading-relaxed">
+            {subMessage}
+          </p>
+        )}
+
+        {elapsed !== undefined && (
+          <p className="text-xs text-muted-foreground mb-4 font-mono tabular-nums">
+            {elapsed.toFixed(0)}s elapsed{estimatedTotal ? ` / ~${estimatedTotal.toFixed(0)}s estimated` : ""}
+          </p>
+        )}
+
         {progress > 0 && (
-          <div className="w-72">
+          <div className="w-72 space-y-2">
             <div className="h-1.5 bg-muted w-full rounded-full overflow-hidden">
               <div
                 className="h-full bg-foreground rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-2 font-mono tabular-nums">{progress}%</p>
+            <p className="text-xs text-muted-foreground text-center font-mono tabular-nums">{progress}%</p>
+          </div>
+        )}
+
+        {subProgress !== null && subProgress !== undefined && progress > 0 && progress < 100 && (
+          <div className="w-64 mt-3 space-y-1">
+            <div className="h-1 bg-muted-foreground/20 w-full rounded-full overflow-hidden">
+              <div
+                className="h-full bg-muted-foreground/60 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${subProgress}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground/60 text-center font-mono tabular-nums">
+              step {subProgress}%
+            </p>
           </div>
         )}
       </div>

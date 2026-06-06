@@ -198,7 +198,9 @@ class TaskService:
 
             # Progress callback wrapper
             async def update_progress(
-                progress: int, message: str, status: str = "processing"
+                progress: int, message: str, status: str = "processing",
+                sub_progress: int | None = None, sub_message: str | None = None,
+                metadata: dict | None = None,
             ):
                 await self.task_repo.update_task_status(
                     self.db,
@@ -208,7 +210,7 @@ class TaskService:
                     progress_message=message,
                 )
                 if progress_callback:
-                    await progress_callback(progress, message, status)
+                    await progress_callback(progress, message, status, sub_progress, sub_message, metadata)
 
             # Process video with progress updates
             pipeline_start = perf_counter()
@@ -293,7 +295,13 @@ class TaskService:
                     continue
 
                 clip_progress = 70 + int(((i + 1) / total_clips) * 25) if total_clips > 0 else 95
-                await update_progress(clip_progress, f"Saving clip {i+1}/{total_clips}...")
+                sub_progress_val = int(((i + 1) / total_clips) * 100) if total_clips > 0 else 100
+                await update_progress(
+                    clip_progress, f"Saving clip {i+1}/{total_clips}...",
+                    sub_progress=sub_progress_val,
+                    sub_message=f"Clip {i+1}/{total_clips}: {clip_info.get('duration', 0):.1f}s",
+                    metadata={"clip_index": i, "total_clips": total_clips, "duration": clip_info.get('duration', 0)},
+                )
 
                 clip_id = await self.clip_repo.create_clip(
                     self.db,
@@ -376,20 +384,37 @@ class TaskService:
                 )
                 raise
             error_code_id = _generate_error_code()
+            detail = str(e)
+            # Categorize errors with user-friendly context
+            error_code = "task_error"
+            message_lower = detail.lower()
+            user_hints = {
+                "download_error": "Failed to download the video. The URL may be invalid, the video may be private, or YouTube may be rate-limiting.",
+                "transcription_error": "Failed to generate captions. The audio could not be processed — try a shorter video or a different format.",
+                "analysis_error": "AI analysis failed. This can happen with very long or unusual content. Try again or disable AI reasoning.",
+                "connection_error": "The AI server lost connection. This is usually temporary — please try again.",
+                "clip_error": "Failed to render video clips. The source video may be corrupted or in an unsupported format.",
+            }
+            if "download" in message_lower or "youtube" in message_lower:
+                error_code = "download_error"
+            elif "analysis" in message_lower:
+                error_code = "analysis_error"
+            elif "transcript" in message_lower:
+                error_code = "transcription_error"
+            elif "connection" in message_lower or "server" in message_lower:
+                error_code = "connection_error"
+            elif "clip" in message_lower or "render" in message_lower or "ffmpeg" in message_lower:
+                error_code = "clip_error"
+            elif "cancelled" in message_lower:
+                error_code = "cancelled"
+
+            hint = user_hints.get(error_code, "An unexpected error occurred. Please try again or contact support.")
+            user_message = f"[{error_code_id}] {hint}"
+
             await self.task_repo.update_task_status(
                 self.db, task_id, "error",
-                progress_message=f"[{error_code_id}] {str(e)}",
+                progress_message=user_message,
             )
-            error_code = "task_error"
-            message = str(e).lower()
-            if "download" in message or "youtube" in message:
-                error_code = "download_error"
-            elif "analysis" in message:
-                error_code = "analysis_error"
-            elif "transcript" in message:
-                error_code = "transcription_error"
-            elif "cancelled" in message:
-                error_code = "cancelled"
 
             await self.task_repo.update_task_runtime_metadata(
                 self.db,

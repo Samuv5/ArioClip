@@ -427,19 +427,19 @@ export default function Home() {
       const startResponse = await fetch("/api/tasks/create", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: { url: videoUrl, title: null },
-          font_options: { font_family: fontFamily, font_size: fontSize, font_color: normalizedColor },
-          caption_template: captionTemplate,
-          include_broll: includeBroll,
-          processing_mode: "fast",
-          output_format: outputFormat,
-          add_subtitles: addSubtitles,
-          cut_long_pauses: cutLongPauses,
-          pause_threshold_ms: normalizedPauseThreshold,
-          remove_filler_words: removeFillerWords,
-          filtered_words: normalizedFilteredWords,
-        }),
+          body: JSON.stringify({
+            source: { url: videoUrl, title: null },
+            font_options: { font_family: fontFamily, font_size: fontSize, font_color: normalizedColor },
+            caption_template: captionTemplate,
+            include_broll: includeBroll,
+            processing_mode: "fast",
+            output_format: outputFormat,
+            add_subtitles: addSubtitles,
+            cut_long_pauses: cutLongPauses,
+            pause_threshold_ms: normalizedPauseThreshold,
+            remove_filler_words: removeFillerWords,
+            filtered_words: normalizedFilteredWords,
+          }),
       });
 
       if (!startResponse.ok) {

@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import Config, get_config
+from ..runtime_settings import get_cached_setting
 
 PAID_PLAN_STATUSES = {"active", "trialing"}
 PAID_PLAN_LIMIT_CONFIG = {
@@ -128,6 +129,17 @@ class BillingService:
         is_paid = plan in PAID_PLAN_LIMIT_CONFIG and status in PAID_PLAN_STATUSES
 
         if not is_paid:
+            usage_limit = 0
+            rt_setting = get_cached_setting("PLAN_FREE_LIMIT")
+            if rt_setting is not None:
+                try:
+                    usage_limit = int(rt_setting)
+                except (ValueError, TypeError):
+                    pass
+            unlimited = usage_limit <= 0
+            can_create = unlimited or usage_count < usage_limit
+            remaining = None if unlimited else max(usage_limit - usage_count, 0)
+            reason = None if can_create else "Free plan usage limit reached"
             return {
                 "monetization_enabled": True,
                 "plan": plan,
@@ -136,16 +148,27 @@ class BillingService:
                 "period_end": end,
                 "trial_ends_at": row.get("trial_ends_at"),
                 "usage_count": usage_count,
-                "usage_limit": 0,
-                "remaining": 0,
-                "can_create_task": False,
-                "upgrade_required": True,
-                "reason": "Choose a paid plan to process videos.",
+                "usage_limit": None if unlimited else usage_limit,
+                "remaining": remaining,
+                "can_create_task": can_create,
+                "upgrade_required": not can_create,
+                "reason": reason,
             }
 
         usage_limit = int(
             getattr(self.config, PAID_PLAN_LIMIT_CONFIG[plan])
         )
+        # Check runtime settings override
+        rt_setting = get_cached_setting(f"PLAN_{plan.upper()}_LIMIT")
+        if rt_setting is not None:
+            try:
+                usage_limit = int(rt_setting)
+            except (ValueError, TypeError):
+                pass
+        unlimited = usage_limit <= 0
+        can_create = unlimited or usage_count < usage_limit
+        remaining = None if unlimited else max(usage_limit - usage_count, 0)
+        reason = None if can_create else "Plan usage limit reached"
         unlimited = usage_limit <= 0
         can_create = unlimited or usage_count < usage_limit
         remaining = None if unlimited else max(usage_limit - usage_count, 0)

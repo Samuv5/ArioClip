@@ -3,10 +3,11 @@ AI-related functions for transcript analysis with enhanced precision and viralit
 """
 
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Callable
 import asyncio
 import logging
 import re
+import time
 
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
@@ -27,7 +28,7 @@ IDEAL_CLIP_MIN_SECONDS = 90
 IDEAL_CLIP_MAX_SECONDS = 150
 MIN_ACCEPTED_CLIP_SECONDS = 60
 MAX_ACCEPTED_CLIP_SECONDS = 180
-TRANSCRIPT_ANALYSIS_CACHE_VERSION = "lanczos-fix-v1"
+TRANSCRIPT_ANALYSIS_CACHE_VERSION = "qwen3-4b-v1"
 TRANSCRIPT_SPAN_RE = re.compile(
     r"^\[(?P<start>\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*"
     r"(?P<end>\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?P<text>.*)$"
@@ -171,128 +172,73 @@ class TranscriptAnalysis(BaseModel):
 
 
 # Enhanced system prompt with virality scoring and B-roll detection
-transcript_analysis_system_prompt = """You are an expert transcript analyst for short-form video editing.
-
-Your job is extraction and ranking, not creative rewriting. You must stay fully grounded in the transcript and choose the best clip candidates that already exist in the source material.
+transcript_analysis_system_prompt = """You are an expert transcript analyst for short-form video editing. Your ONLY job is to select the best 2-5 contiguous transcript segments that would work as standalone viral clips.
 
 OUTPUT CONTRACT:
-- Return valid JSON only. Do not output Markdown, headings, bullets, prose, code fences, explanations, or commentary outside the JSON object.
+- Return valid JSON only. No Markdown, headings, bullets, prose, code fences, explanations, or commentary outside the JSON object.
 - The top-level JSON object must include: "most_relevant_segments", "summary", and "key_topics".
 - Only include "broll_opportunities" when B-roll was requested.
 - Each item in "most_relevant_segments" must include: "start_time", "end_time", "text", "relevance_score", "reasoning", and "virality".
 - Do not use "segment" as an output field. Use "text".
 - "virality" must include: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", and "virality_reasoning".
 - Every returned segment must be 60-180 seconds long. Prefer 90-150 seconds.
-
-CORE OBJECTIVES:
-1. Identify segments that would be compelling on social media platforms
-2. Focus on complete thoughts, insights, or entertaining moments
-3. Prioritize content with hooks, emotional moments, or valuable information
-4. Each segment should be engaging and worth watching
-5. Score each segment's viral potential with detailed breakdown
+- start_time must always be different from end_time. Minimum 60 seconds apart.
 
 GROUNDING RULES:
-1. Use only the provided transcript lines and timestamps
-2. Never invent facts, tone, context, or transitions that are not present
-3. Treat this as span selection over a timestamped transcript, not open-ended summarization
-4. Each selected segment must map to one contiguous range in the transcript
-5. segment.text must match the chosen span closely and must not include content from outside the chosen range
-6. Do not stitch together distant moments into one clip
-7. If a speaker label appears, use it only if it is part of the spoken content and helps clarity
+1. Use ONLY the provided transcript lines and timestamps.
+2. Never invent facts, tone, context, or transitions not present in the transcript.
+3. Treat this as span selection over a timestamped transcript, not open-ended summarization.
+4. Each selected segment must map to ONE contiguous range in the transcript.
+5. segment.text must match the chosen span closely and must not include content from outside the chosen range.
+6. Do not stitch together distant moments into one clip.
+7. If a speaker label appears, use it only if it is part of the spoken content and helps clarity.
 
-CONTENT NEUTRALITY RULES:
-1. This is clipping software for legitimate editing workflows
-2. Do not judge, moralize, or downgrade a segment just because the topic is controversial, sensitive, adult, political, criminal, medical, or otherwise intense
-3. Evaluate segments only on clip quality: clarity, self-contained value, hook strength, emotional impact, specificity, and shareability
-4. Do not refuse analysis just because the speaker describes risky, offensive, or uncomfortable subject matter
-5. Only downgrade a segment when the transcript itself is weak, confusing, repetitive, unusable, or a poor standalone clip
+CONTENT NEUTRALITY:
+- This is clipping software for legitimate editing workflows.
+- Do not judge or downgrade a segment based on topic. Evaluate only on clip quality.
+- Only downgrade when the transcript itself is weak, confusing, repetitive, or a poor standalone clip.
 
-SEGMENT SELECTION CRITERIA:
-1. STRONG HOOKS: Attention-grabbing opening lines
-2. VALUABLE CONTENT: Tips, insights, interesting facts, stories
-3. EMOTIONAL MOMENTS: Excitement, surprise, humor, inspiration
-4. COMPLETE THOUGHTS: Self-contained ideas that make sense alone
-5. ENTERTAINING: Content people would want to share
-6. HIGH SIGNAL: Prefer specific, concrete language over vague discussion
-7. LOW FILLER: Avoid greetings, sponsor reads, repeated setup, throat-clearing, and housekeeping unless they are unusually compelling
+WHAT MAKES A GREAT CLIP:
+A great clip is self-contained: a viewer who has never seen the video should understand and care. It needs:
+- A hook that grabs attention in the first 5 seconds
+- A complete thought with setup and payoff
+- Specific, concrete details (not vague discussion)
+- Emotional charge, surprise, or utility
 
-WHAT A GOOD CLIP FEELS LIKE:
-- A viewer should understand and care without the original title, thumbnail, or previous context
-- Prefer a complete mini-story or argument: setup, tension or claim, specific detail, and payoff
-- Expand a great short moment to nearby contiguous lines when that adds needed setup, stakes, or payoff
-- Strong picks include contrarian claims, mistakes or lessons, concrete examples, before/after moments, frameworks, surprising results, emotionally charged reactions, and complete answers to interesting questions
-- Bad picks include intros, sponsor or CTA sections, vague setup, contextless quote fragments, repeated points, definitions without payoff, meandering background, and answer fragments that require unseen context
+EXAMPLES OF STRONG SEGMENTS:
+- A contrarian claim with supporting evidence
+- A specific mistake the speaker made and what they learned
+- A concrete framework or system the audience can apply
+- A surprising result or before/after transformation
+- A heated debate or emotional reaction moment
+- A complete answer to an interesting question
+- A step-by-step explanation of something valuable
 
-VIRALITY SCORING (0-100 total, from four 0-25 subscores):
-For each segment, provide a detailed virality breakdown:
+EXAMPLES OF WEAK SEGMENTS (AVOID):
+- Intros ("Hey guys welcome back to the channel")
+- Sponsor reads or CTA sections ("Use my code for 20% off")
+- Vague setup without payoff ("So let me tell you about this thing")
+- Contextless quote fragments ("...and that's why it matters")
+- Repeated points the speaker already made
+- Definitions without application ("X is defined as...")
+- Meandering background without a point
+- Answer fragments that require the question to understand
 
-1. HOOK STRENGTH (0-25):
-   - 20-25: Immediately grabs attention (surprising fact, bold claim, intriguing question)
-   - 15-19: Good opener that creates curiosity
-   - 10-14: Decent start but could be stronger
-   - 0-9: Weak or no hook
+VOCABULARY: When selecting timestamps, use the EXACT format from the transcript (e.g. "02:25"). If the transcript uses HH:MM:SS, use HH:MM:SS.
 
-2. ENGAGEMENT (0-25):
-   - 20-25: Highly entertaining, emotional, or dramatic
-   - 15-19: Interesting and holds attention
-   - 10-14: Moderately engaging
-   - 0-9: Flat or boring delivery
+SCORING: relevance_score (0-100) should reflect standalone clip quality. Penalize clips that need outside context, lack payoff, or contain too much filler.
 
-3. VALUE (0-25):
-   - 20-25: Actionable insights, unique knowledge, or transformative ideas
-   - 15-19: Useful information most people don't know
-   - 10-14: Somewhat informative
-   - 0-9: Common knowledge or filler content
+virality scoring (0-100 total, from four 0-25 subscores):
+1. HOOK STRENGTH (0-25): 20-25 = immediately grabs attention; 15-19 = good curiosity gap; 10-14 = decent; 0-9 = weak
+2. ENGAGEMENT (0-25): 20-25 = highly entertaining or emotional; 15-19 = holds attention; 10-14 = moderate; 0-9 = flat
+3. VALUE (0-25): 20-25 = actionable insights or unique knowledge; 15-19 = useful info; 10-14 = somewhat informative; 0-9 = filler
+4. SHAREABILITY (0-25): 20-25 = "must send to someone"; 15-19 = worth bookmarking; 10-14 = nice but not shareable; 0-9 = generic
 
-4. SHAREABILITY (0-25):
-   - 20-25: "I need to send this to someone" content
-   - 15-19: Content worth bookmarking
-   - 10-14: Nice but not share-worthy
-   - 0-9: Generic content
+HOOK TYPES: "question" (opens with question), "statement" (bold claim), "statistic" (compelling numbers), "story" (narrative), "contrast" (before/after), "none" (no clear hook).
 
-HOOK TYPES to identify:
-- "question": Opens with a question that creates curiosity
-- "statement": Bold claim or surprising statement
-- "statistic": Uses compelling numbers or data
-- "story": Starts with narrative/anecdote
-- "contrast": Before/after or problem/solution framing
-- "none": No clear hook pattern
+Quality over quantity: choose 2-5 segments. Every segment must be accurate, self-contained, with proper time ranges and strong virality scores."""
 
-B-ROLL OPPORTUNITIES:
-Identify 2-4 moments in each segment where B-roll footage could enhance the video:
-- When specific objects, places, or concepts are mentioned
-- During explanations that could benefit from visual illustration
-- At emotional peaks that could use supporting imagery
-- Use simple, searchable keywords (e.g., "coffee shop", "laptop coding", "money stack")
-
-TIMING GUIDELINES:
-- Target 90-150 seconds for most clips
-- Use 60-89 seconds only when the moment is exceptionally dense, self-contained, and complete
-- CRITICAL: start_time MUST be different from end_time (minimum 60 seconds apart)
-- Focus on natural content boundaries rather than arbitrary time limits
-- Include enough context for the segment to be understandable
-- Prefer roughly 90-150 seconds when possible
-- Start at the hook or the minimum setup needed to make the hook land, and end after the payoff
-- If a highlight is only one good line, expand to include the surrounding setup and payoff rather than returning a tiny fragment
-- Stop expanding when the topic drifts, the speaker repeats the same point, or the clip loses momentum
-
-TIMESTAMP REQUIREMENTS - EXTREMELY IMPORTANT:
-- Use EXACT timestamps as they appear in the transcript
-- Never modify timestamp format (keep MM:SS structure)
-- start_time MUST be LESS THAN end_time (start_time < end_time)
-- MINIMUM segment duration: 60 seconds (end_time - start_time >= 60 seconds)
-- IDEAL segment duration: 90-150 seconds
-- Look at transcript ranges like [02:25 - 02:35] and use different start/end times
-- NEVER use the same timestamp for both start_time and end_time
-- Example: start_time: "02:25", end_time: "02:35" (NOT "02:25" and "02:25")
-
-SCORING AND OUTPUT RULES:
-- relevance_score should reflect how well the segment works as a standalone short clip, not just whether the topic is generally important
-- Penalize clips that are only quotable but not self-contained, too generic, missing setup, missing payoff, or padded with filler
-- virality_reasoning and reasoning should cite what is actually present in the chosen span
-- summary and key_topics must also stay grounded in the transcript and should not add outside interpretation
-
-Find 2-5 compelling segments that would work well as standalone clips. Quality over quantity: choose fewer stronger segments over filling a quota. Every selected segment must be accurate, self-contained, have proper time ranges, and score high on virality metrics."""
+# Lazy-loaded agent to avoid import-time failures when API keys aren't set
 
 # Lazy-loaded agent to avoid import-time failures when API keys aren't set
 _transcript_agent: Optional[Agent[None, TranscriptAnalysis]] = None
@@ -465,55 +411,49 @@ def build_transcript_analysis_prompt(
     total_seconds = _get_total_transcript_duration_seconds(transcript)
     total_str = _format_duration(total_seconds)
 
-    return f"""Analyze this video transcript and identify the most engaging segments for short-form content.
+    return f"""Select the 2-5 best clip segments from this transcript. Return JSON only.
 
-The transcript is formatted as one line per timestamped span, for example:
-[00:12 - 00:21] Spoken text here
-[00:21 - 00:35] More spoken text here
+WORKFLOW:
+1. Read the entire transcript first. Note the last timestamp (video is {total_str} long).
+2. Identify 4-8 candidate moments that could work as standalone clips.
+3. Rank them by: self-contained clarity, hook strength, emotional impact, concrete value.
+4. Select the best 2-5, ensuring they are spread across the timeline.
+5. For each selected segment, set start_time and end_time to EXACT transcript timestamps.
+6. Include enough surrounding context (contiguous transcript lines) so the clip makes sense alone.
 
-Follow this workflow:
-1. Read the transcript as a sequence of timestamped spans.
-2. Select only contiguous ranges that already exist in the transcript.
-3. Prefer moments with a strong hook, clear payoff, emotional charge, or concrete value.
-4. For each chosen segment, use the earliest timestamp in the selected range as start_time and the latest timestamp in the selected range as end_time.{broll_instruction}
+DURATION RULES:
+- Each segment must be 60-180 seconds.
+- Prefer 90-150 seconds.
+- If a great moment is under 90 seconds, expand it with nearby context lines until it reaches 90+ seconds.
+- If a moment needs the first few seconds of setup, include them. A slow start is better than a confusing clip.
+- Stop expanding when the topic shifts, the speaker repeats, or the energy drops.
 
-Selection target:
-- Choose 2-5 segments total.
-- Most selected clips should be 90-150 seconds.
-- Only choose a 60-89 second clip when it already contains a full setup and payoff.
-- If a strong moment is shorter than 90 seconds, first try expanding to nearby contiguous transcript lines that add useful context.
-- Skip weak standalone picks: intros, sponsor reads, CTAs, contextless quotes, repeated points, vague setup, and answer fragments that require prior context.
-- Before returning a segment, ask whether a viewer would understand and care without seeing the rest of the source video.
+TIMELINE COVERAGE (IMPORTANT):
+- At most ONE clip may start in the first 20% of the video.
+- You MUST select clips from at least two different thirds of the video.
+- Spread selections across the timeline. If the best clips are all early, drop the weakest early pick and pick from a later section.
+- No two clips may overlap or share transcript lines.
+- When in doubt, prefer later parts of the video over earlier ones.
 
-Critical accuracy requirements:
-- Do not fabricate or embellish content.
-- Do not use timestamps that are not present in the transcript.
-- Do not merge separate non-contiguous moments into one segment.
-- segment.text must reflect only the spoken content inside the selected time range.
-- If a span lacks enough context to stand alone, expand to nearby contiguous lines rather than guessing.
-- If there is a tradeoff between "viral" and "accurate", choose accuracy.
-- Do not reject or penalize a segment simply because of the subject matter; stay content-neutral and assess clip quality only.
-{signal_section}
+GOOD PICKS (concrete examples):
+- A speaker says "I made this one mistake that cost me $10,000" → clip from that moment with the lesson
+- "Here are the 3 things I wish I knew before starting" → clip covering all 3 points
+- An argument or debate where someone makes a strong point
+- "Let me show you exactly how to do this" → step-by-step explanation
+- A surprising statistic or fact with context
+- Before/after comparison with specific details
+- Emotional story with a clear lesson
 
-JSON-only output requirements:
-- Return one valid JSON object and nothing else.
-- No Markdown, headings, bullets, code fences, or explanatory text outside JSON.
-- Top-level keys: "most_relevant_segments", "summary", "key_topics"{', "broll_opportunities"' if include_broll else ""}.
-- Segment keys: "start_time", "end_time", "text", "relevance_score", "reasoning", "virality".
-- Virality keys: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", "virality_reasoning".
-- Do not return segments shorter than {MIN_ACCEPTED_CLIP_SECONDS} seconds or longer than {MAX_ACCEPTED_CLIP_SECONDS} seconds.
+BAD PICKS (avoid these):
+- "Hey guys welcome back" → intros
+- "Use code X for Y% off" → sponsor reads
+- "In this video we'll cover..." → previews/outros
+- "So yeah that's basically it" → rambling without point
+- "As I mentioned earlier..." → repeated content
+- Any content that makes no sense without the video title or prior context
+- Random quotes without surrounding context
 
---- COVERAGE INSTRUCTIONS (MANDATORY) ---
-Total video duration: {total_str}.
-
-SCAN THE ENTIRE TIMELINE before selecting any clips. Note the last timestamp in the transcript. Do NOT limit your search to the first few minutes.
-
-DISTRIBUTION RULES:
-1. At most ONE clip may start in the first 20% of the video.
-2. You MUST select clips from at least two different thirds of the video.
-3. Spread selections across the timeline. If the best 3 clips happen to all be early, drop the weakest early pick and pick a strong clip from an uncovered later section instead.
-4. No two clips may overlap or share transcript lines.
-5. When in doubt, prefer later parts of the video over earlier ones.
+VOCABULARY: Use timestamps exactly as they appear. If the transcript shows "[02:25 - 02:35]", use "02:25" and "02:35".
 
 Transcript:
 {transcript}"""
@@ -671,7 +611,8 @@ def _repair_segment_bounds(
 
 
 async def get_most_relevant_parts_by_transcript(
-    transcript: str, include_broll: bool = False, clip_signals: str | None = None
+    transcript: str, include_broll: bool = False, clip_signals: str | None = None,
+    progress_callback: Callable | None = None,
 ) -> TranscriptAnalysis:
     """Get the most relevant parts of a transcript with virality scoring and optional B-roll detection."""
     if len(transcript) > MAX_TRANSCRIPT_CHARS:
@@ -733,6 +674,29 @@ async def get_most_relevant_parts_by_transcript(
     try:
         agent = get_transcript_agent()
 
+        # Start a background task that reports time-based AI analysis progress
+        if progress_callback:
+            _ai_start_time = time.time()
+            # Estimate total processing: ~0.5s per 100 chars for prompt processing + ~2s per segment for generation
+            _est_chars = len(transcript)
+            _est_total_secs = max(30, min(180, _est_chars / 200 + 60))
+
+            async def _ai_progress_reporter():
+                while True:
+                    _elapsed = time.time() - _ai_start_time
+                    _pct = min(int((_elapsed / _est_total_secs) * 100), 99)
+                    _main_pct = 52 + int(_pct * 0.18)
+                    await progress_callback(
+                        _main_pct, "Analyzing content with AI (analyzing transcript)...",
+                        "processing",
+                        sub_progress=_pct,
+                        sub_message=f"~{_est_total_secs - _elapsed:.0f}s remaining" if _elapsed < _est_total_secs else "Finishing up...",
+                        metadata={"elapsed_seconds": round(_elapsed, 1), "estimated_total_seconds": round(_est_total_secs, 0)},
+                    )
+                    await asyncio.sleep(3)
+
+            _progress_task = asyncio.create_task(_ai_progress_reporter())
+
         result = await agent.run(
             build_transcript_analysis_prompt(
                 transcript=transcript,
@@ -740,6 +704,15 @@ async def get_most_relevant_parts_by_transcript(
                 clip_signals=clip_signals,
             )
         )
+
+        if progress_callback:
+            _progress_task.cancel()
+            # Signal that AI analysis is done, moving to validation
+            await progress_callback(
+                70, "Creating video clips...", "processing",
+                sub_progress=100, sub_message="AI analysis complete",
+                metadata={"elapsed_seconds": round(time.time() - _ai_start_time, 1)},
+            )
 
         analysis = result.output
         logger.info(

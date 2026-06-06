@@ -9,6 +9,7 @@ import logging
 import json
 import subprocess
 import uuid
+import time
 
 from ..utils.async_helpers import run_in_thread
 from ..youtube_utils import (
@@ -138,7 +139,7 @@ class VideoService:
     async def generate_transcript(
         video_path: Path,
         processing_mode: str = "balanced",
-        progress_callback: Optional[Callable[[int, str, str], Awaitable[None]]] = None,
+        progress_callback: Optional[Callable[[int, str, str, Optional[int], Optional[str], Optional[dict]], Awaitable[None]]] = None,
     ) -> str:
         """
         Generate transcript from video using whisperx.
@@ -165,7 +166,7 @@ class VideoService:
     async def analyze_transcript(
         transcript: str,
         clip_signals: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, str, str], Awaitable[None]]] = None,
+        progress_callback: Optional[Callable[[int, str, str, Optional[int], Optional[str], Optional[dict]], Awaitable[None]]] = None,
     ) -> Any:
         """
         Analyze transcript with AI to find relevant segments.
@@ -196,6 +197,7 @@ class VideoService:
         relevant_parts = await get_most_relevant_parts_by_transcript(
             transcript,
             clip_signals=clip_signals,
+            progress_callback=progress_callback,
         )
         logger.info(
             f"AI analysis complete: {len(relevant_parts.most_relevant_segments)} segments found"
@@ -401,7 +403,7 @@ class VideoService:
         add_subtitles: bool = True,
         cached_transcript: Optional[str] = None,
         cached_analysis_json: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, str, str], Awaitable[None]]] = None,
+        progress_callback: Optional[Callable[[int, str, str, Optional[int], Optional[str], Optional[dict]], Awaitable[None]]] = None,
         should_cancel: Optional[Callable[[], Awaitable[bool]]] = None,
     ) -> Dict[str, Any]:
         """
@@ -409,7 +411,7 @@ class VideoService:
         Returns dict with segments and clips info.
 
         progress_callback: Optional function to call with progress updates
-                          Signature: async def callback(progress: int, message: str, status: str)
+                          Signature: async def callback(progress: int, message: str, status: str, sub_progress: Optional[int], sub_message: Optional[str], metadata: Optional[dict])
         """
         try:
             runtime_config = get_config()

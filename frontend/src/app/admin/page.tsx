@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { AdminUserToggle } from "@/components/admin/admin-user-toggle";
 import { CancelAllButton } from "@/components/admin/cancel-all-button";
+import { CreateUserForm } from "@/components/admin/create-user-form";
+import { PlanSettings } from "@/components/admin/plan-settings";
 import {
   RuntimeSettingsForm,
   type RuntimeSetting,
@@ -234,6 +236,74 @@ export default async function AdminPage({
 
       <section className="mt-8 rounded-lg border border-border bg-background">
         <div className="border-b border-border px-4 py-3">
+          <h2 className="text-lg font-medium">Users</h2>
+          <p className="text-sm text-muted-foreground">Create new users and manage existing ones.</p>
+        </div>
+        <div className="p-4 border-b border-border">
+          <CreateUserForm />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">User</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Generations</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Created</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-background">
+              {recentUsers.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-4 py-3">
+                    <p className="text-sm font-medium text-foreground">{user.name || "Unnamed user"}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <Link href={`/admin?user=${user.id}`} className="text-xs text-foreground underline">
+                      View user tasks
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline" className="capitalize">
+                      {user.plan}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    {user.is_admin ? (
+                      <Badge className="bg-black text-white">Admin</Badge>
+                    ) : (
+                      <Badge variant="outline">User</Badge>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{generationCountByUser.get(user.id) || 0}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{user.createdAt.toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-right">
+                    <AdminUserToggle
+                      userId={user.id}
+                      isAdmin={user.is_admin}
+                      isCurrentUser={user.id === session.user.id}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="text-lg font-medium">Plans &amp; Limits</h2>
+          <p className="text-sm text-muted-foreground">Set generation limits per plan (0 = unlimited). These override env vars.</p>
+        </div>
+        <div className="p-4">
+          <PlanSettings />
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-lg border border-border bg-background">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="text-lg font-medium">Runtime Settings</h2>
           <p className="text-sm text-muted-foreground">Configure provider keys and model settings without editing env files.</p>
         </div>
@@ -316,62 +386,6 @@ export default async function AdminPage({
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{task.generated_clips_ids.length}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{task.created_at.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="mt-8 rounded-lg border border-border bg-background">
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="text-lg font-medium">Users</h2>
-          <p className="text-sm text-muted-foreground">Most recent users. Toggle admin access and inspect user tasks.</p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Generations</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Created</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-background">
-              {recentUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-foreground">{user.name || "Unnamed user"}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                    <Link href={`/admin?user=${user.id}`} className="text-xs text-foreground underline">
-                      View user tasks
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline" className="capitalize">
-                      {user.plan}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    {user.is_admin ? (
-                      <Badge className="bg-black text-white">Admin</Badge>
-                    ) : (
-                      <Badge variant="outline">User</Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{generationCountByUser.get(user.id) || 0}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{user.createdAt.toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-right">
-                    <AdminUserToggle
-                      userId={user.id}
-                      isAdmin={user.is_admin}
-                      isCurrentUser={user.id === session.user.id}
-                    />
-                  </td>
                 </tr>
               ))}
             </tbody>
