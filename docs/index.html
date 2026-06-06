@@ -6,7 +6,7 @@
   <title>ArioClip — AI-Powered Video Clipping Tool</title>
   <meta name="description" content="ArioClip is an open-source AI video clipping tool. Transform long-form content into viral short clips. Self-hosted, AGPL-3.0.">
   <meta property="og:title" content="ArioClip — AI Video Clipping">
-  <meta property="og:description" content="Open-source AI video clipper. Self-host your own OpusClip alternative.">
+  <meta property="og:description" content="Open-source AI video clipper. Self-host your own OpusClip alternative. Gemma-3 AI, WhisperX, face tracking, animated captions.">
   <meta property="og:image" content="https://raw.githubusercontent.com/Samuv5/ArioClip/main/assets/social-preview.svg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,6 +21,8 @@
       --accent: #e94560;
       --accent2: #ff6b6b;
       --accent-soft: rgba(233,69,96,0.15);
+      --green: #2ecc71;
+      --green-soft: rgba(46,204,113,0.12);
       --text: #eeeef5;
       --text2: #8888aa;
       --text3: #55557a;
@@ -85,21 +87,21 @@
 
     .hero-glow {
       position: absolute;
-      width: 600px;
-      height: 600px;
+      width: 700px;
+      height: 700px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(233,69,96,0.15) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(233,69,96,0.12) 0%, transparent 70%);
       top: 30%;
       left: 50%;
       transform: translate(-50%, -50%);
-      filter: blur(80px);
+      filter: blur(100px);
       z-index: -1;
       animation: glow-pulse 6s ease-in-out infinite;
     }
 
     @keyframes glow-pulse {
-      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+      0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
     }
 
     .pill {
@@ -174,7 +176,7 @@
     .hero-sub {
       font-size: clamp(1rem, 1.5vw, 1.15rem);
       color: var(--text2);
-      max-width: 560px;
+      max-width: 600px;
       margin: 20px auto 36px;
       animation: fade-up 0.8s ease-out 0.4s both;
       line-height: 1.7;
@@ -439,13 +441,120 @@
       border-top: 1px solid rgba(255,255,255,0.04);
     }
 
+    /* ── Subtitles Showcase ── */
+    .template-showcase {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .template-card {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 20px 16px;
+      text-align: center;
+      transition: all var(--transition);
+    }
+
+    .template-card:hover {
+      border-color: rgba(233,69,96,0.25);
+      transform: translateY(-3px);
+    }
+
+    .template-card .preview {
+      font-size: 0.9rem;
+      padding: 12px 8px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .template-card .name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .template-card .desc {
+      font-size: 0.7rem;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    .tmpl-default { background: rgba(233,69,96,0.1); color: var(--accent2); }
+    .tmpl-minimal { background: rgba(255,255,255,0.05); color: var(--text); }
+    .tmpl-karaoke { background: linear-gradient(90deg, rgba(233,69,96,0.15), rgba(255,107,107,0.15)); color: var(--accent2); }
+    .tmpl-pop { background: linear-gradient(135deg, rgba(233,69,96,0.15), rgba(46,204,113,0.1)); color: #fff; }
+    .tmpl-fade { background: rgba(255,255,255,0.03); color: var(--text2); font-style: italic; }
+    .tmpl-typewriter { background: rgba(255,255,255,0.04); color: var(--text); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+    .tmpl-scale-in { background: rgba(233,69,96,0.08); color: var(--accent2); }
+
+    /* ── Comparison ── */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .compare-card {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      transition: all var(--transition);
+    }
+
+    .compare-card.bad {
+      border-color: rgba(255,107,107,0.1);
+    }
+
+    .compare-card.good {
+      border-color: rgba(46,204,113,0.15);
+    }
+
+    .compare-card h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .compare-card.bad h3 { color: var(--accent2); }
+    .compare-card.good h3 { color: var(--green); }
+
+    .compare-card ul {
+      list-style: none;
+      font-size: 0.8rem;
+      color: var(--text2);
+    }
+
+    .compare-card li {
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .compare-card li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .compare-card.bad li::before { background: var(--accent2); }
+    .compare-card.good li::before { background: var(--green); }
+
     /* ── Tech Stack ── */
     .tech-cloud {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       justify-content: center;
-      max-width: 600px;
+      max-width: 650px;
       margin: 0 auto;
     }
 
@@ -553,6 +662,8 @@
       .pipe-arrow { transform: rotate(90deg); }
       .hero-stats { gap: 20px; }
       .features { grid-template-columns: 1fr; }
+      .comparison-grid { grid-template-columns: 1fr; }
+      .template-showcase { grid-template-columns: repeat(2, 1fr); }
       .cta-card { padding: 40px 24px; }
     }
   </style>
@@ -593,95 +704,95 @@
       </svg>
     </div>
     <h1>Turn long videos<br>into viral shorts</h1>
-    <p class="hero-sub">AI-powered clipping tool. Paste a YouTube link — AI finds the best moments, generates vertical clips with face-tracking, and syncs captions. Self-hosted, no limits.</p>
+    <p class="hero-sub">AI-powered clipping tool. Paste a YouTube link — AI finds the best moments with Gemma-3, generates vertical clips with face-tracking and animated captions, then exports platform-ready shorts. Self-hosted, zero subscriptions.</p>
     <div class="btn-group">
       <a href="https://github.com/Samuv5/ArioClip" class="btn btn-primary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         View on GitHub
       </a>
-      <a href="#quickstart" class="btn btn-secondary">
+      <a href="#features" class="btn btn-secondary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Quickstart
+        Features
       </a>
     </div>
     <div class="hero-stats">
-      <div class="stat-item"><div class="stat-value">AGPL-3.0</div><div class="stat-label">License</div></div>
-      <div class="stat-item"><div class="stat-value">Python + TS</div><div class="stat-label">Stack</div></div>
-      <div class="stat-item"><div class="stat-value">Self-Hosted</div><div class="stat-label">Privacy</div></div>
+      <div class="stat-item"><div class="stat-value">Gemma-3</div><div class="stat-label">AI Model</div></div>
+      <div class="stat-item"><div class="stat-value">7</div><div class="stat-label">Caption Styles</div></div>
+      <div class="stat-item"><div class="stat-value">Self-Hosted</div><div class="stat-label">No Limits</div></div>
     </div>
   </header>
 
   <!-- Features -->
-  <section>
+  <section id="features">
     <div class="container">
       <div class="reveal">
         <div class="section-label">Features</div>
-        <h2>Everything you need to clip</h2>
-        <p class="section-desc">From AI-powered selection to platform-ready export — a complete pipeline.</p>
+        <h2>A complete clipping pipeline</h2>
+        <p class="section-desc">From download to export — every step optimized for quality and speed.</p>
       </div>
       <div class="features reveal">
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
           </div>
-          <h3>AI Segment Selection</h3>
-          <p>Pydantic AI analyzes transcripts to pick 3–7 viral moments with detailed virality scoring.</p>
+          <h3>Gemma-3 AI Selection</h3>
+          <p>Google Gemma-3 4B runs locally via llama.cpp. Improved prompt engineering with concrete examples — selects 2–5 viral-worthy segments with per-clip scoring.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <h3>Face-Aware Cropping</h3>
-          <p>MediaPipe → OpenCV DNN → Haar cascade fallback chain keeps faces perfectly centered.</p>
+          <p>MediaPipe → OpenCV DNN → Haar cascade fallback chain keeps faces perfectly centered in every 9:16 frame.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
           </div>
           <h3>Word-Synced Captions</h3>
-          <p>WhisperX word timestamps rendered as styled, animated captions with multiple templates.</p>
+          <p>WhisperX word-level timestamps rendered as animated captions. Each word appears in sync with the speaker's voice.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
-          <h3>Virality Scoring</h3>
-          <p>Every clip scored on hook, engagement, value &amp; shareability — know what works before exporting.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-          </div>
-          <h3>Caption Templates</h3>
-          <p>Customizable animated templates with multiple styles to match your brand identity.</p>
+          <h3>7 Caption Templates</h3>
+          <p>7 animated styles — default, minimal, karaoke, pop, fade, typewriter, scale in. Change styles without re-rendering.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </div>
-          <h3>Transition Effects</h3>
-          <p>Optional intro/outro effects between clips for a polished, professional finish.</p>
+          <h3>Sub-Progress Tracking</h3>
+          <p>Real-time SSE with granular sub-progress bars. See exact step (transcription → AI → rendering clip N/M) with elapsed time and ETA estimates.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <h3>Smart Error Handling</h3>
+          <p>Every failure mode gets a human-readable message with an error code. No more cryptic stack traces — categorized as download, transcription, analysis, or clip errors.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>GPU Memory Management</h3>
+          <p>Intelligent VRAM orchestration on 4GB cards — stops llama-server before WhisperX/ffmpeg, restarts for AI analysis. No crashes.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </div>
           <h3>B-Roll Overlays</h3>
-          <p>Pexels integration for stock footage overlays that enhance visual appeal and retention.</p>
+          <p>Pexels integration for context-aware stock footage overlays — automatically adds B-roll to enhance visual retention.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </div>
           <h3>YouTube Upload</h3>
-          <p>Multi-channel OAuth upload directly from the app to your YouTube channels.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          </div>
-          <h3>Real-Time Progress</h3>
-          <p>SSE stream from worker to frontend — see transcription, analysis, and rendering live.</p>
+          <p>Multi-channel OAuth upload directly from the app. Export clips and publish without leaving the dashboard.</p>
         </div>
       </div>
     </div>
@@ -691,9 +802,9 @@
   <section>
     <div class="container">
       <div class="reveal">
-        <div class="section-label">How It Works</div>
-        <h2>Processing Pipeline</h2>
-        <p class="section-desc">From raw video to finished shorts in minutes.</p>
+        <div class="section-label">Pipeline</div>
+        <h2>End-to-end processing</h2>
+        <p class="section-desc">From raw video to finished shorts in minutes, fully automated.</p>
       </div>
       <div class="pipeline-wrap reveal">
         <div class="pipeline-steps">
@@ -701,14 +812,21 @@
             <div class="pipe-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
             </div>
-            <span class="step-label">Input</span>
+            <span class="step-label">Download</span>
+          </div>
+          <span class="pipe-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          <div class="pipe-step">
+            <div class="pipe-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <span class="step-label">Transcribe</span>
           </div>
           <span class="pipe-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
           <div class="pipe-step">
             <div class="pipe-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
             </div>
-            <span class="step-label">AI Analysis</span>
+            <span class="step-label">AI Analyze</span>
           </div>
           <span class="pipe-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
           <div class="pipe-step">
@@ -726,7 +844,88 @@
           </div>
         </div>
         <div class="pipe-desc">
-          YouTube URL or upload · WhisperX transcription · Pydantic AI selection · MoviePy rendering · Vertical 9:16 output
+          yt-dlp download · WhisperX transcription · Gemma-3 AI selection · MoviePy rendering · 9:16 vertical output
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI Prompt Improvement -->
+  <section>
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">Smarter AI</div>
+        <h2>Engineered for quality picks</h2>
+        <p class="section-desc">The AI prompt was rewritten from scratch to eliminate bad clips and maximize viral potential.</p>
+      </div>
+      <div class="comparison-grid reveal">
+        <div class="compare-card bad">
+          <h3>Before (generic)</h3>
+          <ul>
+            <li>Abstract instructions, no concrete examples</li>
+            <li>Picked intros &amp; sponsor reads</li>
+            <li>Only scanned the first 3 minutes</li>
+            <li>Content-neutral (accepted vague rambling)</li>
+            <li>Clips often made no sense standalone</li>
+          </ul>
+        </div>
+        <div class="compare-card good">
+          <h3>After (grounded)</h3>
+          <ul>
+            <li>Concrete GOOD PICK and BAD PICK examples</li>
+            <li>Forces full-timeline coverage (max 1 in first 20%)</li>
+            <li>Expands short moments with nearby context</li>
+            <li>Requires self-contained clarity per clip</li>
+            <li>Duration rules: 90-150s preferred, 60-180s max</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Caption Templates -->
+  <section>
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">Styling</div>
+        <h2>7 animated caption templates</h2>
+        <p class="section-desc">Each with unique animation. Change templates without re-rendering the clip.</p>
+      </div>
+      <div class="template-showcase reveal">
+        <div class="template-card">
+          <div class="preview tmpl-default">Default</div>
+          <div class="name">default</div>
+          <div class="desc">Bold accent highlight</div>
+        </div>
+        <div class="template-card">
+          <div class="preview tmpl-minimal">Minimal</div>
+          <div class="name">minimal</div>
+          <div class="desc">Subtle light text</div>
+        </div>
+        <div class="template-card">
+          <div class="preview tmpl-karaoke">Karaoke</div>
+          <div class="name">karaoke</div>
+          <div class="desc">Word-by-word highlight</div>
+        </div>
+        <div class="template-card">
+          <div class="preview tmpl-pop">Pop</div>
+          <div class="name">pop</div>
+          <div class="desc">Bouncy color accent</div>
+        </div>
+        <div class="template-card">
+          <div class="preview tmpl-fade">Fade</div>
+          <div class="name">fade</div>
+          <div class="desc">Elegant fade in/out</div>
+        </div>
+        <div class="template-card">
+          <div class="preview tmpl-typewriter">Typewriter</div>
+          <div class="name">typewriter</div>
+          <div class="desc">Monospace typing effect</div>
+        </div>
+        <div class="template-card">
+          <div class="preview tmpl-scale-in">Scale In</div>
+          <div class="name">scale_in</div>
+          <div class="desc">Zoom-in entrance</div>
         </div>
       </div>
     </div>
@@ -737,8 +936,8 @@
     <div class="container">
       <div class="reveal">
         <div class="section-label">Stack</div>
-        <h2>Built With</h2>
-        <p class="section-desc">Modern tools for modern video processing.</p>
+        <h2>Built with modern tools</h2>
+        <p class="section-desc">Designed for local GPU inference — runs on a GTX 1650 4GB.</p>
       </div>
       <div class="tech-cloud reveal">
         <span class="tech-badge">Python 3.11+</span>
@@ -749,9 +948,10 @@
         <span class="tech-badge">Redis</span>
         <span class="tech-badge">MoviePy</span>
         <span class="tech-badge">WhisperX</span>
+        <span class="tech-badge">Gemma-3 4B</span>
         <span class="tech-badge">llama.cpp</span>
-        <span class="tech-badge">ffmpeg</span>
-        <span class="tech-badge">TailwindCSS</span>
+        <span class="tech-badge">ffmpeg CUDA</span>
+        <span class="tech-badge">TailwindCSS v4</span>
         <span class="tech-badge">ShadCN UI</span>
         <span class="tech-badge">pydantic-ai</span>
         <span class="tech-badge">yt-dlp</span>
@@ -799,7 +999,7 @@
       <div class="cta-card reveal">
         <div class="section-label">Open Source</div>
         <h2>Start Clipping Today</h2>
-        <p class="section-desc" style="margin-bottom:32px">Self-host your own AI video clipping pipeline. No subscriptions. No limits. Full control.</p>
+        <p class="section-desc" style="margin-bottom:32px">Self-host your own AI video clipping pipeline. No subscriptions. No limits. Full control over your data.</p>
         <a href="https://github.com/Samuv5/ArioClip" class="btn btn-primary">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
           GitHub
