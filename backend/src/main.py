@@ -1,5 +1,5 @@
 from .youtube_utils import *
-from .video_utils import *
+from .video_utils import *  # noqa: F403 — re-exports from ffmpeg_utils, subtitle_utils, face_detection, clip_rendering
 from .ai import *
 from .config import Config
 from .caption_templates import get_template_info, get_template_names
@@ -31,6 +31,7 @@ from .auth_headers import get_authenticated_user_id as get_backend_user_id
 from .api.routes.tasks import router as tasks_router
 from .api.routes.feedback import router as feedback_router
 from .api.routes.billing import router as billing_router
+from .api.routes.youtube import router as youtube_router
 from .services.video_service import VideoService, UPLOAD_URL_PREFIX
 
 config = Config()
@@ -46,8 +47,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SupoClip API",
-    description="Python-based backend for SupoClip",
+    title="ArioClip API",
+    description="Python-based backend for ArioClip — AI-powered video clipping",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -71,6 +72,7 @@ app.add_middleware(
 app.include_router(tasks_router)
 app.include_router(feedback_router)
 app.include_router(billing_router)
+app.include_router(youtube_router)
 
 def _get_authenticated_user_id(request: Request) -> str:
     return get_backend_user_id(request, config)

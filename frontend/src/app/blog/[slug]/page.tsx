@@ -30,25 +30,22 @@ const comparisonRows = [
   {
     icon: ShieldCheck,
     feature: "Free usage model",
-    supoclip: "Open source and self-hostable. Your main costs are your own compute and API keys.",
-    opusClip: "Free plan exists, but exports can include an OpusClip watermark.",
+    arioclip: "Open source and self-hostable. Your main costs are your own compute and API keys.",
   },
   {
     icon: Sparkles,
     feature: "Clip discovery",
-    supoclip: "Transcribes long videos, scores segments, and surfaces promising short-form moments.",
-    opusClip: "AI clipping workflow built for finding social-ready clips from long videos.",
+    arioclip: "Transcribes long videos, scores segments, and surfaces promising short-form moments.",
   },
   {
     icon: ScanFace,
     feature: "Vertical formatting",
-    supoclip: "Face-centered 9:16 cropping, subtitles, and platform-ready exports.",
-    opusClip: "Offers short-form exports and AI reframing for social platforms.",
+    arioclip: "Face-centered 9:16 cropping, subtitles, and platform-ready exports.",
   },
   {
     icon: Github,
     feature: "Control",
-    supoclip: "Full source access, editable deployment, and no vendor lock-in.",
+    arioclip: "Full source access, editable deployment, and no vendor lock-in.",
     opusClip: "Hosted product with managed workflows and subscription tiers.",
   },
 ];
@@ -58,19 +55,19 @@ const faqs = [
     icon: Sparkles,
     question: "What is the best free OpusClip alternative?",
     answer:
-      "SupoClip is a strong free OpusClip alternative if you want an open-source AI clip maker that you can self-host, customize, and run with your own video workflow.",
+      "ArioClip is a strong free OpusClip alternative if you want an open-source AI clip maker that you can self-host, customize, and run with your own video workflow.",
   },
   {
     icon: ShieldCheck,
-    question: "Is SupoClip completely free?",
+    question: "Is ArioClip completely free?",
     answer:
-      "The SupoClip codebase is free and open source. If you self-host it, you still need to account for your own infrastructure, transcription, and LLM provider costs.",
+      "The ArioClip codebase is free and open source. If you self-host it, you still need to account for your own infrastructure, transcription, and LLM provider costs.",
   },
   {
     icon: Captions,
-    question: "Does SupoClip add a watermark?",
+    question: "Does ArioClip add a watermark?",
     answer:
-      "SupoClip is designed for self-hosted control, so watermarking is not a forced platform limitation in the open-source workflow.",
+      "ArioClip is designed for self-hosted control, so watermarking is not a forced platform limitation in the open-source workflow.",
   },
 ];
 
@@ -115,7 +112,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     },
     publisher: {
       "@type": "Organization",
-      name: "SupoClip",
+      name: "ArioClip",
       logo: {
         "@type": "ImageObject",
         url: `${siteUrl}/logo.png`,
@@ -150,12 +147,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <header className="border-b bg-background/95">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="SupoClip" width={24} height={24} className="rounded-lg" />
+            <Image src="/logo.png" alt="ArioClip" width={24} height={24} className="rounded-lg" />
             <span
               className="text-lg font-bold tracking-tight"
               style={{ fontFamily: "var(--font-syne), var(--font-geist-sans), system-ui" }}
             >
-              SupoClip
+              ArioClip
             </span>
           </Link>
           <div className="flex items-center gap-2">
@@ -189,7 +186,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 <a href={HOSTED_APP_URL} target="_blank" rel="noopener noreferrer">
                   <Badge variant="outline" className="gap-2">
                     <Play className="h-3.5 w-3.5" />
-                    Try hosted SupoClip
+                    Try hosted ArioClip
                   </Badge>
                 </a>
               </div>
@@ -200,7 +197,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 {post.title}
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-                If you like the idea of OpusClip but want a free, open-source path, SupoClip gives
+                If you like the idea of OpusClip but want a free, open-source path, ArioClip gives
                 you the core workflow: find strong moments in long videos, reframe them vertically,
                 add captions, and export clips for Shorts, Reels, and TikTok.
               </p>
@@ -249,12 +246,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </p>
 
               <p>
-                SupoClip is the best free OpusClip alternative for that specific creator: someone
+                ArioClip is the best free OpusClip alternative for that specific creator: someone
                 who wants AI-assisted clip discovery, vertical exports, captions, and control over
                 the underlying system. You can also
                 {" "}
                 <a href={HOSTED_APP_URL} target="_blank" rel="noopener noreferrer">
-                  try the hosted SupoClip product
+                  try the hosted ArioClip product
                 </a>
                 {" "}
                 if you want to skip local setup.
@@ -262,7 +259,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
               <h2 id="quick-verdict">Quick Verdict</h2>
               <p>
-                Choose SupoClip if you want an open-source AI video clipper you can self-host.
+                Choose ArioClip if you want an open-source AI video clipper you can self-host.
                 Choose OpusClip if you want a managed hosted product and are comfortable with its
                 plan limits, watermark rules, and credit model.
               </p>
@@ -297,9 +294,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 workflow.
               </p>
 
-              <h2>What Makes SupoClip Different</h2>
+              <h2>What Makes ArioClip Different</h2>
               <p>
-                SupoClip is not just a thin wrapper around a hosted editor. It is a complete
+                ArioClip is not just a thin wrapper around a hosted editor. It is a complete
                 open-source clipping app with a FastAPI backend, a Next.js frontend, background
                 workers, transcription, AI scoring, face-aware vertical reframing, caption styling,
                 and export presets.
@@ -311,13 +308,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 or local models to use.
               </p>
 
-              <h2 id="supoclip-vs-opusclip">SupoClip vs OpusClip</h2>
+              <h2 id="arioclip-vs-opusclip">ArioClip vs OpusClip</h2>
             </div>
 
             <div className="my-8 overflow-hidden rounded-lg border">
               <div className="grid grid-cols-[0.85fr_1fr_1fr] bg-muted/50 text-sm font-semibold">
                 <div className="p-4">Feature</div>
-                <div className="border-l p-4">SupoClip</div>
+                <div className="border-l p-4">ArioClip</div>
                 <div className="border-l p-4">OpusClip</div>
               </div>
               {comparisonRows.map(({ icon: Icon, ...row }) => (
@@ -326,25 +323,25 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     {row.feature}
                   </div>
-                  <div className="border-l p-4 leading-6 text-muted-foreground">{row.supoclip}</div>
+                  <div className="border-l p-4 leading-6 text-muted-foreground">{row.arioclip}</div>
                   <div className="border-l p-4 leading-6 text-muted-foreground">{row.opusClip}</div>
                 </div>
               ))}
             </div>
 
             <div className={articleBodyClassName}>
-              <h2>How SupoClip Works</h2>
+              <h2>How ArioClip Works</h2>
               <ol>
                 <li>Paste a YouTube URL or upload a video.</li>
-                <li>SupoClip transcribes the source and finds candidate moments.</li>
+                <li>ArioClip transcribes the source and finds candidate moments.</li>
                 <li>AI scores clips for hook strength, engagement, value, and shareability.</li>
                 <li>The editor creates vertical, captioned clips with face-aware framing.</li>
                 <li>You export shorts for YouTube Shorts, TikTok, Instagram Reels, or other feeds.</li>
               </ol>
 
-              <h2>When SupoClip Is the Better Choice</h2>
+              <h2>When ArioClip Is the Better Choice</h2>
               <p>
-                SupoClip is best when you want a free OpusClip alternative with developer control.
+                ArioClip is best when you want a free OpusClip alternative with developer control.
                 It is especially useful for creators with a backlog of long videos, agencies that
                 want to customize clipping workflows, or technical teams that want AI video
                 clipping inside their own stack.
@@ -369,13 +366,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     className="mt-2 text-2xl font-bold tracking-tight"
                     style={{ fontFamily: "var(--font-syne), var(--font-geist-sans), system-ui" }}
                   >
-                    Start clipping with SupoClip.
+                    Start clipping with ArioClip.
                   </h2>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <a href={HOSTED_APP_URL} target="_blank" rel="noopener noreferrer">
                     <Button variant="secondary">
-                      Hosted SupoClip
+                      Hosted ArioClip
                       <ExternalLink className="h-4 w-4" />
                     </Button>
                   </a>
@@ -385,7 +382,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <a href="https://github.com/FujiwaraChoki/supoclip" target="_blank" rel="noopener noreferrer">
+                  <a href="https://github.com/Samuv5/ArioClip" target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="border-background/30 bg-transparent text-background hover:bg-background hover:text-foreground">
                       <Github className="h-4 w-4" />
                       GitHub
@@ -442,7 +439,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   <a href="#quick-verdict" className="block text-muted-foreground hover:text-foreground">
                     Quick verdict
                   </a>
-                  <a href="#supoclip-vs-opusclip" className="block text-muted-foreground hover:text-foreground">
+                  <a href="#arioclip-vs-opusclip" className="block text-muted-foreground hover:text-foreground">
                     Comparison
                   </a>
                   <a href="#faq" className="block text-muted-foreground hover:text-foreground">
@@ -454,7 +451,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 <ShieldCheck className="h-5 w-5 text-green-600" />
                 <p className="mt-3 text-sm font-semibold">Open-source control</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Use SupoClip when you want the clipping workflow without handing every decision
+                  Use ArioClip when you want the clipping workflow without handing every decision
                   to a hosted platform.
                 </p>
               </div>

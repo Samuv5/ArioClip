@@ -1,11 +1,62 @@
+# ── Environment & Secrets ──────────────────────────────────────────
+.env
 .env.local
-.DS_Store
-__pycache__
-*.egg-info
+.env.*.local
+*.key
+*.pem
+*.crt
+**/service-account*.json
+**/credentials*.json
+
+# ── Dependencies ───────────────────────────────────────────────────
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.ruff_cache/
+
+# ── Build & Output ─────────────────────────────────────────────────
+.next/
+dist/
+build/
+*.tsbuildinfo
+.next
+
+# ── Logs & Temp ────────────────────────────────────────────────────
 logs/
 temp/
-.env
+*.log
 *.m4a
-frontend/e2e/.seed.json
-data/youtube_tokens/
+*.mp4
+*.mp4.part
+*.part
+*.cache.json
+*.transcript_cache.json
 *.pickle
+data/
+uploads/
+
+# ── OS files ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── IDE ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.sublime-*
+
+# ── Docker ─────────────────────────────────────────────────────────
+docker-data/
+
+# ── YouTube tokens (contains OAuth refresh tokens) ─────────────────
+data/youtube_tokens/
+**/youtube_tokens/
+
+# ── Test artifacts ─────────────────────────────────────────────────
+frontend/e2e/.seed.json
+frontend/test-results/
+frontend/playwright-report/

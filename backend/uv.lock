@@ -271,6 +271,93 @@ wheels = [
 ]
 
 [[package]]
+name = "arioclip-backend"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiofiles" },
+    { name = "alembic" },
+    { name = "apify-client" },
+    { name = "arq" },
+    { name = "assemblyai" },
+    { name = "asyncpg" },
+    { name = "cryptography" },
+    { name = "fastapi" },
+    { name = "google-api-python-client" },
+    { name = "google-auth-httplib2" },
+    { name = "google-auth-oauthlib" },
+    { name = "greenlet" },
+    { name = "mediapipe" },
+    { name = "numpy" },
+    { name = "openai-whisper" },
+    { name = "opencv-python" },
+    { name = "psutil" },
+    { name = "pydantic-ai" },
+    { name = "python-dotenv" },
+    { name = "redis" },
+    { name = "requests" },
+    { name = "resend" },
+    { name = "setuptools-rust" },
+    { name = "sqlalchemy" },
+    { name = "srt" },
+    { name = "srt-equalizer" },
+    { name = "sse-starlette" },
+    { name = "uvicorn" },
+    { name = "whisper" },
+    { name = "yt-dlp" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", specifier = ">=23.2.0" },
+    { name = "alembic", specifier = ">=1.13.0" },
+    { name = "apify-client", specifier = ">=1.8.1" },
+    { name = "arq", specifier = ">=0.26.0" },
+    { name = "assemblyai", specifier = ">=0.35.0" },
+    { name = "asyncpg", specifier = ">=0.29.0" },
+    { name = "cryptography", specifier = ">=42.0.0" },
+    { name = "fastapi", specifier = ">=0.110.0" },
+    { name = "google-api-python-client", specifier = ">=2.197.0" },
+    { name = "google-auth-httplib2", specifier = ">=0.4.0" },
+    { name = "google-auth-oauthlib", specifier = ">=1.4.0" },
+    { name = "greenlet", specifier = ">=2.0.0" },
+    { name = "mediapipe", specifier = ">=0.10.0" },
+    { name = "numpy", specifier = ">=1.24.0" },
+    { name = "openai-whisper", specifier = ">=20250625" },
+    { name = "opencv-python", specifier = ">=4.8.0" },
+    { name = "psutil", specifier = ">=7.2.2" },
+    { name = "pydantic-ai", specifier = ">=1.89.1" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "redis", specifier = ">=5.0.0" },
+    { name = "requests", specifier = ">=2.32.0" },
+    { name = "resend", specifier = ">=2.13.0" },
+    { name = "setuptools-rust", specifier = ">=1.11.1" },
+    { name = "sqlalchemy", specifier = ">=2.0.25" },
+    { name = "srt", specifier = ">=3.5.3" },
+    { name = "srt-equalizer", specifier = ">=0.1.10" },
+    { name = "sse-starlette", specifier = ">=1.6.5" },
+    { name = "uvicorn", specifier = ">=0.27.0" },
+    { name = "whisper", specifier = ">=1.1.10" },
+    { name = "yt-dlp", specifier = ">=2025.7.21" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+]
+
+[[package]]
 name = "arq"
 version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
@@ -281,6 +368,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a4/81/7f9db65a89c29ba374000309b9dd95509500045df5c7e22f26c3731b7380/arq-0.28.0.tar.gz", hash = "sha256:a458188aefc2d7ee17d136f80d8fa8df1d6eba4ceebdead87e9f172d027dc311", size = 416141, upload-time = "2026-04-16T10:50:23.893Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/48/32/66b616976c5058d434ca2017979bfffd784888177b16b5038abcec93954a/arq-0.28.0-py3-none-any.whl", hash = "sha256:b1696bf5614d60f4172a2c0cbdc177e23ba03a5eb9acc29bd8181f4ea71fff94", size = 26061, upload-time = "2026-04-16T10:50:22.321Z" },
+]
+
+[[package]]
+name = "assemblyai"
+version = "0.64.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pydantic-settings", marker = "python_full_version >= '3.14'" },
+    { name = "typing-extensions" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/b7/e3e515476c3589cbf18b3b935fc869ba4e7c4fddde1bf697d8f27440dae2/assemblyai-0.64.4.tar.gz", hash = "sha256:f0d8d17d083bed93fc90e5494e8bd7546fdab3c3c96092761495fecd53c25ed2", size = 71630, upload-time = "2026-05-28T18:45:22.094Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/60/218ccc68b665a64b876507bf926179aff07f46091c1db9f63fdc902e86c7/assemblyai-0.64.4-py3-none-any.whl", hash = "sha256:ba5c1eba9e5b9aa87c99e4be12eee0a2f81ae56bb9798f3d36a30fec99cc5205", size = 63127, upload-time = "2026-05-28T18:45:20.722Z" },
 ]
 
 [[package]]
@@ -4459,91 +4562,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/81/69/17425771797c36cded50b7fe44e850315d039f28b15901ab44839e70b593/starlette-1.0.0.tar.gz", hash = "sha256:6a4beaf1f81bb472fd19ea9b918b50dc3a77a6f2e190a12954b25e6ed5eea149", size = 2655289, upload-time = "2026-03-22T18:29:46.779Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/c9/584bc9651441b4ba60cc4d557d8a547b5aff901af35bda3a4ee30c819b82/starlette-1.0.0-py3-none-any.whl", hash = "sha256:d3ec55e0bb321692d275455ddfd3df75fff145d009685eb40dc91fc66b03d38b", size = 72651, upload-time = "2026-03-22T18:29:45.111Z" },
-]
-
-[[package]]
-name = "supoclip-backend"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiofiles" },
-    { name = "alembic" },
-    { name = "apify-client" },
-    { name = "arq" },
-    { name = "asyncpg" },
-    { name = "cryptography" },
-    { name = "fastapi" },
-    { name = "google-api-python-client" },
-    { name = "google-auth-httplib2" },
-    { name = "google-auth-oauthlib" },
-    { name = "greenlet" },
-    { name = "mediapipe" },
-    { name = "numpy" },
-    { name = "openai-whisper" },
-    { name = "opencv-python" },
-    { name = "psutil" },
-    { name = "pydantic-ai" },
-    { name = "python-dotenv" },
-    { name = "redis" },
-    { name = "requests" },
-    { name = "resend" },
-    { name = "setuptools-rust" },
-    { name = "sqlalchemy" },
-    { name = "srt" },
-    { name = "srt-equalizer" },
-    { name = "sse-starlette" },
-    { name = "uvicorn" },
-    { name = "whisper" },
-    { name = "yt-dlp" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiofiles", specifier = ">=23.2.0" },
-    { name = "alembic", specifier = ">=1.13.0" },
-    { name = "apify-client", specifier = ">=1.8.1" },
-    { name = "arq", specifier = ">=0.26.0" },
-    { name = "asyncpg", specifier = ">=0.29.0" },
-    { name = "cryptography", specifier = ">=42.0.0" },
-    { name = "fastapi", specifier = ">=0.110.0" },
-    { name = "google-api-python-client", specifier = ">=2.197.0" },
-    { name = "google-auth-httplib2", specifier = ">=0.4.0" },
-    { name = "google-auth-oauthlib", specifier = ">=1.4.0" },
-    { name = "greenlet", specifier = ">=2.0.0" },
-    { name = "mediapipe", specifier = ">=0.10.0" },
-    { name = "numpy", specifier = ">=1.24.0" },
-    { name = "openai-whisper", specifier = ">=20250625" },
-    { name = "opencv-python", specifier = ">=4.8.0" },
-    { name = "psutil", specifier = ">=7.2.2" },
-    { name = "pydantic-ai", specifier = ">=1.89.1" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "redis", specifier = ">=5.0.0" },
-    { name = "requests", specifier = ">=2.32.0" },
-    { name = "resend", specifier = ">=2.13.0" },
-    { name = "setuptools-rust", specifier = ">=1.11.1" },
-    { name = "sqlalchemy", specifier = ">=2.0.25" },
-    { name = "srt", specifier = ">=3.5.3" },
-    { name = "srt-equalizer", specifier = ">=0.1.10" },
-    { name = "sse-starlette", specifier = ">=1.6.5" },
-    { name = "uvicorn", specifier = ">=0.27.0" },
-    { name = "whisper", specifier = ">=1.1.10" },
-    { name = "yt-dlp", specifier = ">=2025.7.21" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
 ]
 
 [[package]]

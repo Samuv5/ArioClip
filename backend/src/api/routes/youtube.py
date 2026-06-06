@@ -24,7 +24,10 @@ from ...config import get_config
 router = APIRouter(prefix="/api/youtube", tags=["youtube"])
 
 TOKENS_DIR = Path("data/youtube_tokens")
-OUTPUT_DIR = Path("data/outputs")
+
+
+def _clips_dir() -> Path:
+    return Path(get_config().temp_dir) / "clips"
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 REDIRECT_URI = "http://localhost/"
@@ -71,10 +74,11 @@ def _list_channels() -> list[str]:
 
 
 def _list_videos() -> list[str]:
-    if not OUTPUT_DIR.exists():
+    clips = _clips_dir()
+    if not clips.exists():
         return []
     exts = {".mp4", ".avi", ".mov", ".wmv", ".webm", ".mkv"}
-    return sorted(f.name for f in OUTPUT_DIR.iterdir() if f.suffix.lower() in exts)
+    return sorted(f.name for f in clips.iterdir() if f.suffix.lower() in exts)
 
 
 # ── models ──────────────────────────────────────────────────────────
@@ -188,9 +192,9 @@ def remove_channel(channel_name: str):
 
 @router.post("/upload", response_model=UploadResponse)
 def upload_video(body: UploadRequest):
-    video_path = OUTPUT_DIR / body.video
+    video_path = _clips_dir() / body.video
     if not video_path.exists():
-        raise HTTPException(404, f"Video '{body.video}' no encontrado en {OUTPUT_DIR}")
+        raise HTTPException(404, f"Video '{body.video}' no encontrado en {_clips_dir()}")
 
     cat_id = YOUTUBE_CATEGORIES.get(body.category, "22")
     privacy_map = {"Público": "public", "Oculto": "unlisted", "Privado": "private"}

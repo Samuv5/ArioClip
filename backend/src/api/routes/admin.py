@@ -67,6 +67,21 @@ SETTING_METADATA = {
         "description": "Optional B-roll stock footage provider key.",
         "input_type": "password",
     },
+    "PLAN_FREE_LIMIT": {
+        "label": "Free plan limit",
+        "description": "Max generations per billing period for Free plan (0 = unlimited).",
+        "input_type": "number",
+    },
+    "PLAN_PRO_LIMIT": {
+        "label": "Pro plan limit",
+        "description": "Max generations per billing period for Pro plan (0 = unlimited).",
+        "input_type": "number",
+    },
+    "PLAN_SCALE_LIMIT": {
+        "label": "Scale plan limit",
+        "description": "Max generations per billing period for Scale plan (0 = unlimited).",
+        "input_type": "number",
+    },
 }
 
 
@@ -218,3 +233,103 @@ async def update_runtime_settings(
             _setting_status(setting_key, rows) for setting_key in RUNTIME_SETTING_KEYS
         ]
     }
+
+
+@router.get("/plans")
+async def get_plans(request: Request, db: AsyncSession = Depends(get_db)):
+    await require_admin_user(request, db, get_config())
+    rows = await get_runtime_setting_rows(db)
+    plan_keys = ["PLAN_FREE_LIMIT", "PLAN_PRO_LIMIT", "PLAN_SCALE_LIMIT"]
+    config = get_config()
+    return {
+        "limits": [
+            {
+                "key": k,
+                "label": {"PLAN_FREE_LIMIT": "Free", "PLAN_PRO_LIMIT": "Pro", "PLAN_SCALE_LIMIT": "Scale"}[k],
+                "value": _plan_setting_value(k, rows, config),
+            }
+            for k in plan_keys
+        ]
+    }
+
+
+class PlanLimitsUpdate(BaseModel):
+    limits: dict[str, str]
+
+
+@router.patch("/plans")
+async def update_plans(
+    request: Request,
+    payload: PlanLimitsUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = await require_admin_user(request, db, get_config())
+    allowed = {"PLAN_FREE_LIMIT", "PLAN_PRO_LIMIT", "PLAN_SCALE_LIMIT"}
+    for key, value in payload.limits.items():
+        if key not in allowed:
+            continue
+        encrypted_value = encrypt_setting_value(str(value))
+        await db.execute(
+            text("""
+                INSERT INTO app_settings (setting_key, encrypted_value, updated_by)
+                VALUES (:key, :value, :updated_by)
+                ON CONFLICT (setting_key) DO UPDATE
+                SET encrypted_value = EXCLUDED.encrypted_value,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = CURRENT_TIMESTAMP
+            """),
+            {"key": key, "value": encrypted_value, "updated_by": user_id},
+        )
+    await db.commit()
+    await load_runtime_settings_cache(db)
+    return {"status": "ok"}
+
+
+def _plan_setting_value(key: str, rows: dict, config) -> str:
+    row = rows.get(key, {})
+    if row.get("encrypted_value"):
+        from ...runtime_settings import decrypt_setting_value
+        try:
+            return decrypt_setting_value(row["encrypted_value"])
+        except Exception:
+            pass
+    env_map = {
+        "PLAN_FREE_LIMIT": "free_plan_task_limit",
+        "PLAN_PRO_LIMIT": "pro_plan_task_limit",
+        "PLAN_SCALE_LIMIT": "scale_plan_task_limit",
+    }
+    return str(getattr(config, env_map[key], ""))
+
+
+class CreateUserPayload(BaseModel):
+    name: str = ""
+    email: str
+    password: str
+
+
+@router.post("/users")
+async def admin_create_user(
+    request: Request,
+    payload: CreateUserPayload,
+    db: AsyncSession = Depends(get_db),
+):
+    from ...admin_auth import _get_user_id_from_request
+    admin_id = await require_admin_user(request, db, get_config())
+    import bcrypt
+    import uuid
+    user_id = str(uuid.uuid4())
+    hashed = bcrypt.hashpw(payload.password.encode(), bcrypt.gensalt()).decode()
+    await db.execute(
+        text("""
+            INSERT INTO users (id, name, email, email_verified, password_hash, plan, subscription_status, is_admin)
+            VALUES (:id, :name, :email, TRUE, :password_hash, 'free', 'inactive', FALSE)
+        """),
+        {
+            "id": user_id,
+            "name": payload.name or payload.email.split("@")[0],
+            "email": payload.email,
+            "password_hash": hashed,
+        },
+    )
+    await db.commit()
+    return {"user": {"id": user_id, "email": payload.email, "name": payload.name or payload.email.split("@")[0]}}

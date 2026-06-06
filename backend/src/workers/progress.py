@@ -17,7 +17,15 @@ class ProgressTracker:
         self.task_id = task_id
         self.key = f"progress:{task_id}"
 
-    async def update(self, progress: int, message: str, status: str = "processing"):
+    async def update(
+        self,
+        progress: int,
+        message: str,
+        status: str = "processing",
+        sub_progress: Optional[int] = None,
+        sub_message: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ):
         """
         Update progress in Redis.
 
@@ -25,13 +33,22 @@ class ProgressTracker:
             progress: Progress percentage (0-100)
             message: Human-readable progress message
             status: Task status (queued, processing, completed, error)
+            sub_progress: Sub-step progress within current stage (0-100)
+            sub_message: Detailed sub-step message
+            metadata: Extra info (token counts, clip index, etc.)
         """
         data = {
             "task_id": self.task_id,
             "progress": progress,
             "message": message,
-            "status": status
+            "status": status,
         }
+        if sub_progress is not None:
+            data["sub_progress"] = sub_progress
+        if sub_message is not None:
+            data["sub_message"] = sub_message
+        if metadata is not None:
+            data["metadata"] = metadata
 
         await self.redis.setex(
             self.key,
@@ -68,13 +85,13 @@ class ProgressTracker:
             json.dumps(data, default=str),
         )
 
-    async def complete(self, message: str = "Complete!"):
+    async def complete(self, message: str = "Complete!", metadata: Optional[dict] = None):
         """Mark task as completed."""
-        await self.update(100, message, "completed")
+        await self.update(100, message, "completed", metadata=metadata)
 
-    async def error(self, message: str):
+    async def error(self, message: str, metadata: Optional[dict] = None):
         """Mark task as failed."""
-        await self.update(0, message, "error")
+        await self.update(0, message, "error", metadata=metadata)
 
     @staticmethod
     async def subscribe_to_progress(redis: Redis, task_id: str):

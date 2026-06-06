@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "=== Starting SupoClip (Local Mode) ==="
+echo "=== Starting ArioClip (Local Mode) ==="
 echo ""
 
 # ── 0. Optional cleanup ──────────────────────────────────────────
@@ -20,9 +20,9 @@ fi
 # It's stopped before whisperx transcription and restarted after.
 # First AI analysis call will start it if not already running.
 if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
-    echo "  ✅ llama-server already running on :8080"
+    echo "  ✅ llama-server running on :8080"
 else
-    echo "  ⏸️  llama-server will be loaded on demand by the worker when needed"
+    echo "  ⏸️  llama-server not running — auto-started on demand by worker"
 fi
 
 # ── 2. Redis ──────────────────────────────────────────────────────
@@ -41,18 +41,20 @@ fi
 
 # ── 4. Backend ───────────────────────────────────────────────────
 echo "  🔄 Starting backend..."
-pkill -f "uvicorn src.main_refactored" 2>/dev/null || true
+pkill -f "uvicorn src.main" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/backend"
-setsid .venv/bin/uvicorn src.main_refactored:app --host 0.0.0.0 --port 8000 > "$SCRIPT_DIR/backend.log" 2>&1 < /dev/null &
+nohup .venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000 >> "$SCRIPT_DIR/backend.log" 2>&1 &
+BGPID=$!
+disown $BGPID 2>/dev/null
 for i in $(seq 1 15); do
-    if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:8000/ > /dev/null 2>&1; then
         echo "  ✅ Backend ready on :8000"
         break
     fi
     sleep 1
 done
-if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+if ! curl -sf http://localhost:8000/ > /dev/null 2>&1; then
     echo "  ❌ Backend failed to start — check backend.log"
     exit 1
 fi
@@ -62,7 +64,15 @@ echo "  🔄 Starting worker..."
 pkill -f "arq src.workers.tasks.WorkerSettings" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/backend"
-setsid .venv/bin/python -m arq src.workers.tasks.WorkerSettings > "$SCRIPT_DIR/worker.log" 2>&1 < /dev/null &
+python3 -c "
+import signal, subprocess, sys, os
+signal.signal(signal.SIGHUP, signal.SIG_IGN)
+log = open('$SCRIPT_DIR/worker.log', 'a')
+proc = subprocess.Popen(['.venv/bin/arq', 'src.workers.tasks.WorkerSettings'], stdout=log, stderr=subprocess.STDOUT)
+print(f'Worker PID: {proc.pid}')
+sys.stdout.flush()
+" > /dev/null 2>&1 &
+disown
 sleep 3
 if pgrep -f "arq src.workers.tasks.WorkerSettings" > /dev/null 2>&1; then
     echo "  ✅ Worker started"
@@ -72,10 +82,13 @@ fi
 
 # ── 6. Frontend ──────────────────────────────────────────────────
 echo "  🔄 Starting frontend..."
-pkill -f "next dev" 2>/dev/null || true
+pkill -f "next.*3107" 2>/dev/null || true
 sleep 1
 cd "$SCRIPT_DIR/frontend"
+rm -rf .next
 nohup npm run dev > /tmp/frontend.log 2>&1 &
+FRPID=$!
+disown $FRPID 2>/dev/null
 for i in $(seq 1 20); do
     if curl -sf http://localhost:3107 > /dev/null 2>&1; then
         echo "  ✅ Frontend ready on :3107"

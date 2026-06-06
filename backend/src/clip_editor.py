@@ -255,7 +255,13 @@ def overlay_custom_captions(
     position: str,
     highlight_words: List[str],
     subtitle_y: Optional[int] = None,
+    font_size: int = 64,
+    font_color: str = "#FFFFFF",
+    highlight_color: str = "#FFD700",
+    stroke_color: str = "#000000",
+    stroke_width: int = 2,
 ) -> Path:
+    from .caption_templates import POSITION_Y_MAP
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / _safe_name("caption")
     words = [word for word in caption_text.split() if word.strip()]
@@ -266,14 +272,9 @@ def overlay_custom_captions(
     width, height = _ffprobe_size(input_path)
     duration = _ffprobe_duration(input_path)
     if subtitle_y is not None:
-        # CSS bottom% -> ASS top-down y coordinate
         y_position = int(height * (100 - subtitle_y) / 100)
     else:
-        y_position = {
-            "top": int(height * 0.18),
-            "middle": int(height * 0.52),
-            "bottom": int(height * 0.78),
-        }.get(position, int(height * 0.78))
+        y_position = int(height * POSITION_Y_MAP.get(position, 0.78))
     highlighted = {word.strip().lower() for word in highlight_words if word.strip()}
     word_duration = max(duration / max(len(words), 1), 0.1)
     ass_path = output_dir / f"captions_{uuid.uuid4().hex[:12]}.ass"
@@ -288,7 +289,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,64,{_ass_color("#FFFFFF")},&H000000FF,&H00000000,&H99000000,1,0,0,0,100,100,0,0,1,2,0,5,{margin},{margin},{margin},1
+Style: Default,Arial,{font_size},{_ass_color(font_color)},&H000000FF,{_ass_color(stroke_color)},{_ass_color("#00000080")},1,0,0,0,100,100,0,0,1,{stroke_width},0,5,{margin},{margin},{margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -298,9 +299,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start = idx * word_duration
         end = min(duration, start + word_duration)
         color = (
-            _ass_color("#FFD700")
+            _ass_color(highlight_color)
             if word.lower().strip(".,!?;:") in highlighted
-            else _ass_color("#FFFFFF")
+            else _ass_color(font_color)
         )
         events.append(
             "Dialogue: 0,"

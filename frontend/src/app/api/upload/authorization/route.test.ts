@@ -47,7 +47,7 @@ describe("/api/upload/authorization", () => {
 
   it("returns signed direct-upload headers when backend auth is configured", async () => {
     vi.stubEnv("BACKEND_AUTH_SECRET", "secret");
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.supoclip.com/");
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.arioclip.app/");
     vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
     vi.mocked(auth.api.getSession).mockResolvedValue({
       user: { id: "user-1" },
@@ -58,7 +58,7 @@ describe("/api/upload/authorization", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       directUpload: true,
-      uploadUrl: "https://api.supoclip.com/upload",
+      uploadUrl: "https://api.arioclip.app/upload",
       headers: {
         "x-supoclip-user-id": "user-1",
         "x-supoclip-ts": "1700000000",
